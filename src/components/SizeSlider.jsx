@@ -16,9 +16,9 @@ function SizeSlider({ value, onChange, min = 1, max = 10 }) {
         fontSize: '1rem',
         fontWeight: '500',
         color: '#374151',
-        minWidth: '80px'
+        marginRight: '1rem'
       }}>
-        Size: {value}
+        Size:
       </label>
       
       <input
@@ -36,17 +36,6 @@ function SizeSlider({ value, onChange, min = 1, max = 10 }) {
           cursor: 'pointer'
         }}
       />
-      
-      <div style={{
-        display: 'flex',
-        gap: '0.5rem',
-        fontSize: '0.875rem',
-        color: '#6b7280'
-      }}>
-        <span>{min}</span>
-        <span>-</span>
-        <span>{max}</span>
-      </div>
     </div>
   )
 }

@@ -3,13 +3,26 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Sphere, Text } from '@react-three/drei'
 import * as THREE from 'three'
 
-function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptureCount, territoryScore, setTerritoryScore, showTerritoryScore, gameMode, aiMode, showNodeNumbers, showEdgeNumbers }) {
+function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptureCount, territoryScore, setTerritoryScore, showTerritoryScore, setShowTerritoryScore, gameMode, aiMode, winCriteria, showNodeNumbers, showEdgeNumbers, challengeLevel, completedLevels, setCompletedLevels, gameStateRef }) {
   const groupRef = useRef()
   const [nodeColors, setNodeColors] = useState({})
   const [hoveredNode, setHoveredNode] = useState(null)
   const [territoryOwnership, setTerritoryOwnership] = useState({})
   const [hoveredGroup, setHoveredGroup] = useState(new Set())
   const [hoveredGroupEdges, setHoveredGroupEdges] = useState(new Set())
+  const [hoveredInternalGroupEdges, setHoveredInternalGroupEdges] = useState(new Set())
+  const [lastMoveWasPass, setLastMoveWasPass] = useState(false)
+  const [gameEnded, setGameEnded] = useState(false)
+  const [gameResult, setGameResult] = useState(null) // 'win', 'lose', or null
+  const [lastComputerMove, setLastComputerMove] = useState(null) // Track computer's last move
+  const [aiThinking, setAiThinking] = useState(false) // Track AI thinking state
+  
+  // Helper function to mark level as completed
+  const markLevelCompleted = (result) => {
+    if (gameMode === 'challenge' && result === 'win' && setCompletedLevels) {
+      setCompletedLevels(prev => new Set([...prev, challengeLevel]))
+    }
+  }
   
   // Go game logic functions
   const getNeighbors = (nodeIndex, totalNodes) => {
@@ -156,6 +169,92 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
     return { territoryScores, territoryOwnership }
   }
   
+  // Check win conditions based on selected criteria
+  const checkWinCondition = (currentCaptureCount) => {
+    if (gameMode !== 'vs-computer' && gameMode !== 'challenge') return null
+    
+    // In challenge mode, use different win criteria based on level
+    let effectiveWinCriteria = winCriteria
+    if (gameMode === 'challenge') {
+      if (challengeLevel === 1) {
+        effectiveWinCriteria = 'capture1'
+      } else if (challengeLevel === 2 || challengeLevel === 3) {
+        effectiveWinCriteria = 'capture3'
+      }
+    }
+    
+    
+    switch (effectiveWinCriteria) {
+      case 'capture1':
+        if (currentCaptureCount.blue >= 1) return 'win'
+        if (currentCaptureCount.red >= 1) return 'lose'
+        break
+      case 'capture3':
+        if (currentCaptureCount.blue >= 3) return 'win'
+        if (currentCaptureCount.red >= 3) return 'lose'
+        break
+      case 'territory':
+        // Territory mode uses double pass ending (handled elsewhere)
+        break
+      default:
+        break
+    }
+    return null
+  }
+  
+  // Game end detection and scoring
+  const checkGameEnd = (nodeColors) => {
+    // Calculate final territory and determine winner
+    const { territoryScores, territoryOwnership: newTerritoryOwnership } = calculateTerritory(nodeColors)
+    
+    // Calculate final scores (territory + captures)
+    const finalScores = {
+      blue: territoryScores.blue + captureCount.blue,
+      red: territoryScores.red + captureCount.red
+    }
+    
+    // Update territory score and ownership for display
+    setTerritoryScore(territoryScores)
+    setTerritoryOwnership(newTerritoryOwnership)
+    
+    // Determine winner
+    let result = null
+    if (finalScores.blue > finalScores.red) {
+      result = 'win' // Player (blue) wins
+    } else if (finalScores.red > finalScores.blue) {
+      result = 'lose' // Computer (red) wins
+    } else {
+      result = 'tie' // Tie game
+    }
+    
+    setGameResult(result)
+    setGameEnded(true)
+    
+    // Mark level as completed if player wins in challenge mode
+    markLevelCompleted(result)
+    
+    // Show territory score automatically when game ends
+    if (typeof setShowTerritoryScore === 'function') {
+      setShowTerritoryScore(true)
+    }
+  }
+  
+  // Restart game function
+  const restartGame = () => {
+    setNodeColors({})
+    setHoveredNode(null)
+    setTerritoryOwnership({})
+    setHoveredGroup(new Set())
+    setHoveredGroupEdges(new Set())
+    setHoveredInternalGroupEdges(new Set())
+    setLastMoveWasPass(false)
+    setGameEnded(false)
+    setGameResult(null)
+    setLastComputerMove(null)
+    setCaptureCount({ blue: 0, red: 0 })
+    setTerritoryScore({ blue: 0, red: 0, neutral: 0 })
+  }
+  
   // AI functions
   const getEmptyNodes = (nodeColors) => {
     const emptyNodes = []
@@ -168,12 +267,215 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
     return emptyNodes
   }
   
+  // Advanced AI evaluation function
+  const evaluatePosition = (nodeColors, color) => {
+    let score = 0
+    const opponentColor = color === 'red' ? 'blue' : 'red'
+    
+    // Factor 1: Captures (most important)
+    const { totalCaptured: captures } = captureGroups(nodeColors, color)
+    const { totalCaptured: opponentCaptures } = captureGroups(nodeColors, opponentColor)
+    score += (captures[color] || 0) * 1000 // High weight for captures
+    score -= (opponentCaptures[opponentColor] || 0) * 1000 // Penalty for opponent captures
+    
+    // Factor 2: Liberty analysis (groups with few liberties)
+    const visited = new Set()
+    let minLiberties = Infinity
+    let minLibertiesCount = 0
+    
+    // Analyze all groups
+    for (let i = 0; i < points.length; i++) {
+      if (visited.has(i)) continue
+      
+      const nodeColor = nodeColors[i] || 'gray'
+      if (nodeColor === color) {
+        const group = getGroup(i, color, nodeColors)
+        group.forEach(node => visited.add(node))
+        
+        const liberties = getLiberties(group, nodeColors)
+        const libertyCount = liberties.size
+        
+        if (libertyCount < minLiberties) {
+          minLiberties = libertyCount
+          minLibertiesCount = libertyCount
+        }
+        
+        // Bonus for having liberties, penalty for few liberties
+        if (libertyCount === 1) {
+          score -= 50 // Danger penalty
+        } else if (libertyCount === 2) {
+          score -= 20 // Slight penalty
+        } else {
+          score += libertyCount * 5 // Bonus for safety
+        }
+      }
+    }
+    
+    // Factor 3: Opponent group analysis (attacking opportunities)
+    const opponentVisited = new Set()
+    for (let i = 0; i < points.length; i++) {
+      if (opponentVisited.has(i)) continue
+      
+      const nodeColor = nodeColors[i] || 'gray'
+      if (nodeColor === opponentColor) {
+        const group = getGroup(i, opponentColor, nodeColors)
+        group.forEach(node => opponentVisited.add(node))
+        
+        const liberties = getLiberties(group, nodeColors)
+        const libertyCount = liberties.size
+        
+        // Bonus for attacking groups with few liberties
+        if (libertyCount === 1) {
+          score += 100 // High bonus for attacking groups in atari
+        } else if (libertyCount === 2) {
+          score += 30 // Moderate bonus
+        } else if (libertyCount === 3) {
+          score += 10 // Small bonus
+        }
+      }
+    }
+    
+    return score
+  }
+  
+  // Advanced AI with optimized 2-move lookahead
+  const makeAdvancedMove = (nodeColors) => {
+    const myColor = 'red'
+    const opponentColor = 'blue'
+    
+    // Get all valid moves
+    const emptyNodes = getEmptyNodes(nodeColors)
+    const validMoves = emptyNodes.filter(nodeIndex => 
+      !wouldCreateZeroLibertyGroup(nodeIndex, myColor, nodeColors)
+    )
+    
+    if (validMoves.length === 0) return null
+    
+    // Step 1: Use greedy algorithm to get top 5 candidate moves (reduced from 10)
+    const candidateMoves = []
+    
+    for (const nodeIndex of validMoves) {
+      // Simulate the move
+      const testNodeColors = { ...nodeColors, [nodeIndex]: myColor }
+      const { newNodeColors: afterCapture } = captureGroups(testNodeColors, myColor)
+      
+      // Quick evaluation for initial filtering
+      const score = evaluatePosition(afterCapture, myColor)
+      candidateMoves.push({ nodeIndex, score })
+    }
+    
+    // Sort and take top 5 (reduced from 10)
+    candidateMoves.sort((a, b) => b.score - a.score)
+    const top5Moves = candidateMoves.slice(0, Math.min(5, candidateMoves.length))
+    
+    // Step 2: 2-move lookahead for each candidate (reduced from 3)
+    const lookaheadResults = []
+    
+    for (const candidate of top5Moves) {
+      const score = minimax(nodeColors, candidate.nodeIndex, 2, true, myColor, opponentColor)
+      lookaheadResults.push({ nodeIndex: candidate.nodeIndex, score })
+    }
+    
+    // Sort by lookahead score and pick the best
+    lookaheadResults.sort((a, b) => b.score - a.score)
+    return lookaheadResults[0].nodeIndex
+  }
+  
+  // Optimized minimax algorithm with alpha-beta pruning
+  const minimax = (nodeColors, moveIndex, depth, isMaximizing, myColor, opponentColor, alpha = -Infinity, beta = Infinity) => {
+    // Base case: depth 0 or no valid moves
+    if (depth === 0) {
+      return evaluatePosition(nodeColors, myColor)
+    }
+    
+    const currentColor = isMaximizing ? myColor : opponentColor
+    const emptyNodes = getEmptyNodes(nodeColors)
+    let validMoves = emptyNodes.filter(nodeIndex => 
+      !wouldCreateZeroLibertyGroup(nodeIndex, currentColor, nodeColors)
+    )
+    
+    if (validMoves.length === 0) {
+      return evaluatePosition(nodeColors, myColor)
+    }
+    
+    // Limit search to fewer moves for speed (max 8 moves per level)
+    if (validMoves.length > 8) {
+      // Quick evaluation to prioritize moves
+      const moveScores = validMoves.map(nodeIndex => {
+        const testNodeColors = { ...nodeColors, [nodeIndex]: currentColor }
+        const { newNodeColors: afterCapture } = captureGroups(testNodeColors, currentColor)
+        return {
+          nodeIndex,
+          score: evaluatePosition(afterCapture, isMaximizing ? myColor : opponentColor)
+        }
+      })
+      
+      moveScores.sort((a, b) => isMaximizing ? b.score - a.score : a.score - b.score)
+      validMoves = moveScores.slice(0, 8).map(item => item.nodeIndex)
+    }
+    
+    if (isMaximizing) {
+      let maxScore = -Infinity
+      
+      for (const nodeIndex of validMoves) {
+        // Simulate the move
+        const testNodeColors = { ...nodeColors, [nodeIndex]: currentColor }
+        const { newNodeColors: afterCapture } = captureGroups(testNodeColors, currentColor)
+        
+        const score = minimax(afterCapture, nodeIndex, depth - 1, false, myColor, opponentColor, alpha, beta)
+        maxScore = Math.max(maxScore, score)
+        alpha = Math.max(alpha, score)
+        
+        if (beta <= alpha) break // Alpha-beta pruning
+      }
+      
+      return maxScore
+    } else {
+      let minScore = Infinity
+      
+      for (const nodeIndex of validMoves) {
+        // Simulate the move
+        const testNodeColors = { ...nodeColors, [nodeIndex]: currentColor }
+        const { newNodeColors: afterCapture } = captureGroups(testNodeColors, currentColor)
+        
+        const score = minimax(afterCapture, nodeIndex, depth - 1, true, myColor, opponentColor, alpha, beta)
+        minScore = Math.min(minScore, score)
+        beta = Math.min(beta, score)
+        
+        if (beta <= alpha) break // Alpha-beta pruning
+      }
+      
+      return minScore
+    }
+  }
+  
+  // Helper function to check if a move would create a zero liberty group (suicide)
+  const wouldCreateZeroLibertyGroup = (nodeIndex, color, currentNodeColors) => {
+    // Simulate placing the stone
+    const testNodeColors = { ...currentNodeColors, [nodeIndex]: color }
+    
+    // Get the group this stone would be part of
+    const newGroup = getGroup(nodeIndex, color, testNodeColors)
+    const newGroupLiberties = getLiberties(newGroup, testNodeColors)
+    
+    // Check if this would create a group with zero liberties (suicide)
+    return newGroupLiberties.size === 0
+  }
+  
   const makeRandomMove = (nodeColors) => {
     const emptyNodes = getEmptyNodes(nodeColors)
     if (emptyNodes.length === 0) return null
     
-    const randomIndex = Math.floor(Math.random() * emptyNodes.length)
-    return emptyNodes[randomIndex]
+    // Filter out moves that would create zero liberty groups
+    const validMoves = emptyNodes.filter(nodeIndex => 
+      !wouldCreateZeroLibertyGroup(nodeIndex, 'red', nodeColors)
+    )
+    
+    // If no valid moves, pass (return null)
+    if (validMoves.length === 0) return null
+    
+    const randomIndex = Math.floor(Math.random() * validMoves.length)
+    return validMoves[randomIndex]
   }
   
   const getLiberties = (group, nodeColors) => {
@@ -222,53 +524,236 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
       }
     }
     
-    // If we found a target group, play in one of its liberties
+    // If we found a target group, play in one of its liberties (but avoid suicide)
     if (targetGroup && targetLiberties && targetLiberties.size > 0) {
       const libertiesArray = Array.from(targetLiberties)
-      const randomIndex = Math.floor(Math.random() * libertiesArray.length)
-      return libertiesArray[randomIndex]
+      
+      // Filter out moves that would create zero liberty groups
+      const validAttackMoves = libertiesArray.filter(nodeIndex => 
+        !wouldCreateZeroLibertyGroup(nodeIndex, 'red', nodeColors)
+      )
+      
+      if (validAttackMoves.length > 0) {
+        const randomIndex = Math.floor(Math.random() * validAttackMoves.length)
+        return validAttackMoves[randomIndex]
+      }
     }
     
-    // Fallback to random move if no opponent groups found
+    // Fallback to random move if no valid attack moves found
+    return makeRandomMove(nodeColors)
+  }
+  
+  const makeGreedyMove = (nodeColors) => {
+    const myColor = 'red' // Computer is red
+    const opponentColor = 'blue' // Player is blue
+    
+    // Helper function to simulate placing a stone and check if it would create a group with only one liberty
+    const wouldCreateGroupWithOneLibertyOrSuicide = (nodeIndex, color, currentNodeColors) => {
+      // Simulate placing the stone
+      const testNodeColors = { ...currentNodeColors, [nodeIndex]: color }
+      
+      // Get the group this stone would be part of
+      const newGroup = getGroup(nodeIndex, color, testNodeColors)
+      const newGroupLiberties = getLiberties(newGroup, testNodeColors)
+      
+      // Check if this would create a group with only one liberty (or suicide with zero liberties)
+      return newGroupLiberties.size <= 1
+    }
+    
+    // Helper function to check if a move would capture stones
+    const wouldCaptureStones = (nodeIndex, color, currentNodeColors) => {
+      // Simulate placing the stone
+      const testNodeColors = { ...currentNodeColors, [nodeIndex]: color }
+      
+      // Use the existing captureGroups function to see if this move would capture anything
+      const { totalCaptured } = captureGroups(testNodeColors, color)
+      
+      // Return the number of stones that would be captured
+      return totalCaptured[color] || 0
+    }
+    
+    // Priority 0: HIGHEST PRIORITY - Moves that capture stones
+    const emptyNodes = getEmptyNodes(nodeColors)
+    const capturingMoves = []
+    
+    for (const nodeIndex of emptyNodes) {
+      // Check if this move would capture stones and is not suicide
+      if (!wouldCreateZeroLibertyGroup(nodeIndex, myColor, nodeColors)) {
+        const captureCount = wouldCaptureStones(nodeIndex, myColor, nodeColors)
+        if (captureCount > 0) {
+          capturingMoves.push({
+            nodeIndex,
+            captureCount,
+            priority: 0 // Highest priority
+          })
+        }
+      }
+    }
+    
+    // If we have capturing moves, prioritize by capture count (most captures first)
+    if (capturingMoves.length > 0) {
+      capturingMoves.sort((a, b) => b.captureCount - a.captureCount)
+      const maxCaptures = capturingMoves[0].captureCount
+      const bestCapturingMoves = capturingMoves.filter(move => move.captureCount === maxCaptures)
+      const randomCapturingMove = bestCapturingMoves[Math.floor(Math.random() * bestCapturingMoves.length)]
+      return randomCapturingMove.nodeIndex
+    }
+    
+    // Priority 1: Defensive moves - save our own groups with only one liberty
+    const visited = new Set()
+    const defensiveMoves = []
+    
+    for (let i = 0; i < points.length; i++) {
+      if (visited.has(i)) continue
+      
+      const nodeColor = nodeColors[i] || 'gray'
+      if (nodeColor === myColor) {
+        const group = getGroup(i, myColor, nodeColors)
+        
+        // Mark all nodes in this group as visited
+        group.forEach(node => visited.add(node))
+        
+        // Get liberties for this group
+        const liberties = getLiberties(group, nodeColors)
+        
+        // If this group has only one liberty, it's in danger
+        if (liberties.size === 1) {
+          const libertyNode = liberties.values().next().value
+          
+          // Check if playing in this liberty would give the group more than one liberty
+          const testNodeColors = { ...nodeColors, [libertyNode]: myColor }
+          const expandedGroup = getGroup(i, myColor, testNodeColors)
+          const expandedLiberties = getLiberties(expandedGroup, testNodeColors)
+          
+          if (expandedLiberties.size > 1) {
+            defensiveMoves.push({
+              nodeIndex: libertyNode,
+              priority: 1,
+              reason: 'save_own_group'
+            })
+          }
+        }
+      }
+    }
+    
+    // If we have defensive moves, prioritize them
+    if (defensiveMoves.length > 0) {
+      const randomDefensiveMove = defensiveMoves[Math.floor(Math.random() * defensiveMoves.length)]
+      return randomDefensiveMove.nodeIndex
+    }
+    
+    // Priority 2: Aggressive moves - attack opponent groups with few liberties
+    const aggressiveMoves = []
+    const visitedOpponent = new Set()
+    
+    for (let i = 0; i < points.length; i++) {
+      if (visitedOpponent.has(i)) continue
+      
+      const nodeColor = nodeColors[i] || 'gray'
+      if (nodeColor === opponentColor) {
+        const group = getGroup(i, opponentColor, nodeColors)
+        
+        // Mark all nodes in this group as visited
+        group.forEach(node => visitedOpponent.add(node))
+        
+        // Get liberties for this group
+        const liberties = getLiberties(group, nodeColors)
+        
+        // Only consider groups with few liberties (1-3)
+        if (liberties.size >= 1 && liberties.size <= 3) {
+          liberties.forEach(libertyNode => {
+            // Check if playing here would NOT create a group with only one liberty for us
+            if (!wouldCreateGroupWithOneLibertyOrSuicide(libertyNode, myColor, nodeColors)) {
+              aggressiveMoves.push({
+                nodeIndex: libertyNode,
+                priority: 4 - liberties.size, // Lower liberty count = higher priority
+                libertyCount: liberties.size,
+                reason: 'attack_opponent'
+              })
+            }
+          })
+        }
+      }
+    }
+    
+    // Sort aggressive moves by priority (higher priority first)
+    aggressiveMoves.sort((a, b) => b.priority - a.priority)
+    
+    // If we have aggressive moves, pick the highest priority one
+    if (aggressiveMoves.length > 0) {
+      // Among moves with the same priority, pick randomly
+      const highestPriority = aggressiveMoves[0].priority
+      const topPriorityMoves = aggressiveMoves.filter(move => move.priority === highestPriority)
+      const randomAggressiveMove = topPriorityMoves[Math.floor(Math.random() * topPriorityMoves.length)]
+      return randomAggressiveMove.nodeIndex
+    }
+    
+    // Priority 3: Expansion moves - find safe moves that don't create vulnerable groups
+    const safeMoves = []
+    
+    for (const nodeIndex of emptyNodes) {
+      if (!wouldCreateGroupWithOneLibertyOrSuicide(nodeIndex, myColor, nodeColors)) {
+        safeMoves.push(nodeIndex)
+      }
+    }
+    
+    // If we have safe moves, pick one randomly
+    if (safeMoves.length > 0) {
+      const randomIndex = Math.floor(Math.random() * safeMoves.length)
+      return safeMoves[randomIndex]
+    }
+    
+    // Priority 4: Fallback - if no safe moves, try random (this should rarely happen)
     return makeRandomMove(nodeColors)
   }
   
   // Group highlighting functions
   const getGroupAndEdges = (nodeIndex, nodeColors) => {
     const nodeColor = nodeColors[nodeIndex] || 'gray'
-    if (nodeColor === 'gray') return { group: new Set(), groupEdges: new Set() }
+    if (nodeColor === 'gray') return { group: new Set(), groupEdges: new Set(), internalGroupEdges: new Set() }
     
     const group = getGroup(nodeIndex, nodeColor, nodeColors)
     const groupEdges = new Set()
+    const internalGroupEdges = new Set()
     
-    // Find all edges that connect group nodes to empty nodes
+    // Find all edges that connect group nodes to empty nodes (liberty edges)
+    // and edges between group nodes (internal edges)
     group.forEach(groupNodeIndex => {
       const neighbors = getNeighbors(groupNodeIndex, points.length)
       neighbors.forEach(neighborIndex => {
         const neighborColor = nodeColors[neighborIndex] || 'gray'
         if (neighborColor === 'gray') {
-          // Store the actual edge indices for highlighting
+          // Store liberty edges for thick highlighting
           groupEdges.add({ from: groupNodeIndex, to: neighborIndex })
+        } else if (neighborColor === nodeColor && group.has(neighborIndex)) {
+          // Store internal group edges for thin highlighting
+          // Only add each edge once by ensuring from < to
+          const edgeKey = groupNodeIndex < neighborIndex 
+            ? { from: groupNodeIndex, to: neighborIndex }
+            : { from: neighborIndex, to: groupNodeIndex }
+          internalGroupEdges.add(edgeKey)
         }
       })
     })
     
-    return { group, groupEdges }
+    return { group, groupEdges, internalGroupEdges }
   }
   
   const handleNodeHover = (nodeIndex, isEntering) => {
     if (isEntering) {
       const nodeColor = nodeColors[nodeIndex] || 'gray'
       if (nodeColor !== 'gray') {
-        const { group, groupEdges } = getGroupAndEdges(nodeIndex, nodeColors)
+        const { group, groupEdges, internalGroupEdges } = getGroupAndEdges(nodeIndex, nodeColors)
         setHoveredGroup(group)
         setHoveredGroupEdges(groupEdges)
+        setHoveredInternalGroupEdges(internalGroupEdges)
       }
       setHoveredNode(nodeIndex)
     } else {
       setHoveredNode(null)
       setHoveredGroup(new Set())
       setHoveredGroupEdges(new Set())
+      setHoveredInternalGroupEdges(new Set())
     }
   }
   
@@ -431,14 +916,7 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
   
   // Reset game state when grid size changes
   useEffect(() => {
-    setNodeColors({})
-    setHoveredNode(null)
-    setTerritoryOwnership({})
-    setHoveredGroup(new Set())
-    setHoveredGroupEdges(new Set())
-    // Reset capture count in parent component
-    setCaptureCount({ blue: 0, red: 0 })
-    setTerritoryScore({ blue: 0, red: 0, neutral: 0 })
+    restartGame()
   }, [size, setCaptureCount, setTerritoryScore])
   
   // Calculate territory when showTerritoryScore changes
@@ -454,7 +932,122 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
   useEffect(() => {
     const initialGeometry = getLineGeometry(cameraPosition)
     setLineGeometry(initialGeometry)
-  }, [points, edgeIndices, hoveredGroupEdges, hoveredGroup, nodeColors])
+  }, [points, edgeIndices, hoveredGroupEdges, hoveredInternalGroupEdges, hoveredGroup, nodeColors])
+  
+  // Add event listener for pass button
+  useEffect(() => {
+    const handlePlayerPass = () => {
+      if ((gameMode === 'vs-computer' || gameMode === 'challenge') && !gameEnded) {
+        // Player passed
+        if (lastMoveWasPass) {
+          // Both player and computer passed in succession - end game (only for territory mode)
+          if (winCriteria === 'territory') {
+            checkGameEnd(nodeColors)
+          }
+        } else {
+          setLastMoveWasPass(true)
+          
+          // Trigger computer move immediately
+          setTimeout(() => {
+            setAiThinking(true)
+            
+            // Use setTimeout to allow UI to update with thinking indicator
+            setTimeout(() => {
+              let computerMove = null
+              
+              // Choose AI strategy based on aiMode
+              if (aiMode === 'attack') {
+                computerMove = makeAttackMove(nodeColors)
+              } else if (aiMode === 'greedy') {
+                computerMove = makeGreedyMove(nodeColors)
+              } else if (aiMode === 'advanced') {
+                computerMove = makeAdvancedMove(nodeColors)
+              } else {
+                computerMove = makeRandomMove(nodeColors)
+              }
+              
+              setAiThinking(false)
+              
+              if (computerMove !== null) {
+                const computerNodeColors = {
+                  ...nodeColors,
+                  [computerMove]: 'red'
+                }
+                
+                // Track computer's last move for highlighting
+                setLastComputerMove(computerMove)
+                
+                // Check for captures from computer move
+                const { newNodeColors: afterComputerCapture, totalCaptured: computerCaptured } = captureGroups(computerNodeColors, 'red')
+                
+                // Update node colors with computer move
+                setNodeColors(afterComputerCapture)
+                
+                // Update capture count for computer and check for win
+                let updatedPassCaptureCount = captureCount
+                if (computerCaptured.red > 0) {
+                  updatedPassCaptureCount = {
+                    ...captureCount,
+                    red: captureCount.red + computerCaptured.red
+                  }
+                  setCaptureCount(updatedPassCaptureCount)
+                }
+                
+                // Check for win condition after computer move
+                const passComputerWinResult = checkWinCondition(updatedPassCaptureCount)
+                if (passComputerWinResult) {
+                  setGameResult(passComputerWinResult)
+                  setGameEnded(true)
+                  // Mark level as completed if player wins in challenge mode
+                  markLevelCompleted(passComputerWinResult)
+                  if (typeof setShowTerritoryScore === 'function') {
+                    setShowTerritoryScore(true)
+                  }
+                  return // End game
+                }
+                
+                // Computer made a move (not a pass)
+                setLastMoveWasPass(false)
+              } else {
+                // Computer also passed - clear last move highlight
+                setLastComputerMove(null)
+                // Computer also passed - end game (only for territory mode)
+                if (winCriteria === 'territory') {
+                  checkGameEnd(nodeColors)
+                }
+              }
+            }, 100) // Small delay to show thinking indicator
+          }, 300) // Slight delay to feel natural
+        }
+      }
+    }
+    
+    window.addEventListener('playerPass', handlePlayerPass)
+    
+    return () => {
+      window.removeEventListener('playerPass', handlePlayerPass)
+    }
+  }, [gameMode, aiMode, nodeColors, setCaptureCount])
+  
+  // Add event listener for restart game
+  useEffect(() => {
+    const handleRestartGame = () => {
+      restartGame()
+    }
+    
+    window.addEventListener('restartGame', handleRestartGame)
+    
+    return () => {
+      window.removeEventListener('restartGame', handleRestartGame)
+    }
+  }, [])
+  
+  // Update gameStateRef when game state changes
+  useEffect(() => {
+    if (gameStateRef) {
+      gameStateRef.current = { gameEnded, gameResult, aiThinking }
+    }
+  }, [gameEnded, gameResult, aiThinking, gameStateRef])
   
   const getLineGeometry = (cameraPosition) => {
     const regularGeometry = new THREE.BufferGeometry()
@@ -583,6 +1176,12 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
   const handleNodeClick = (nodeIndex, event) => {
     event.stopPropagation() // Prevent orbit controls from interfering
     
+    // Don't allow moves if game has ended
+    if (gameEnded) {
+      restartGame()
+      return
+    }
+    
     // Only allow placing stones on empty intersections
     const currentColor = nodeColors[nodeIndex] || 'gray'
     if (currentColor !== 'gray') {
@@ -591,9 +1190,12 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
     
     // Determine the color to place based on game mode
     let colorToPlace = selectedColor
-    if (gameMode === 'vs-computer') {
-      colorToPlace = 'blue' // Player is always blue in vs-computer mode
+    if (gameMode === 'vs-computer' || gameMode === 'challenge') {
+      colorToPlace = 'blue' // Player is always blue in vs-computer and challenge modes
     }
+    
+    // Clear computer's last move highlight when player makes a move
+    setLastComputerMove(null)
     
     // Place the stone
     const newNodeColors = {
@@ -607,46 +1209,107 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
     // Update node colors
     setNodeColors(afterCapture)
     
-    // Update capture count
+    // Update capture count and check for win
+    let updatedCaptureCount = captureCount
     if (totalCaptured[colorToPlace] > 0) {
-      setCaptureCount(prev => ({
-        ...prev,
-        [colorToPlace]: prev[colorToPlace] + totalCaptured[colorToPlace]
-      }))
+      updatedCaptureCount = {
+        ...captureCount,
+        [colorToPlace]: captureCount[colorToPlace] + totalCaptured[colorToPlace]
+      }
+      setCaptureCount(updatedCaptureCount)
     }
     
-    // In vs-computer mode, make computer move after a short delay
-    if (gameMode === 'vs-computer') {
+    // Check for win condition after player move (always check, not just when captures occur)
+    const winResult = checkWinCondition(updatedCaptureCount)
+    if (winResult) {
+      setGameResult(winResult)
+      setGameEnded(true)
+      // Mark level as completed if player wins in challenge mode
+      markLevelCompleted(winResult)
+      if (typeof setShowTerritoryScore === 'function') {
+        setShowTerritoryScore(true)
+      }
+      return // End game, don't continue to computer move
+    }
+    
+    // Player made a move (not a pass)
+    setLastMoveWasPass(false)
+    
+    // In vs-computer or challenge mode, make computer move after a short delay
+    if (gameMode === 'vs-computer' || gameMode === 'challenge') {
       setTimeout(() => {
-        let computerMove = null
+        setAiThinking(true)
         
-        // Choose AI strategy based on aiMode
-        if (aiMode === 'attack') {
-          computerMove = makeAttackMove(afterCapture)
-        } else {
-          computerMove = makeRandomMove(afterCapture)
-        }
-        
-        if (computerMove !== null) {
-          const computerNodeColors = {
-            ...afterCapture,
-            [computerMove]: 'red'
+        // Use setTimeout to allow UI to update with thinking indicator
+        setTimeout(() => {
+          let computerMove = null
+          
+          // Choose AI strategy based on aiMode
+          if (aiMode === 'attack') {
+            computerMove = makeAttackMove(afterCapture)
+          } else if (aiMode === 'greedy') {
+            computerMove = makeGreedyMove(afterCapture)
+          } else if (aiMode === 'advanced') {
+            computerMove = makeAdvancedMove(afterCapture)
+          } else {
+            computerMove = makeRandomMove(afterCapture)
           }
           
-          // Check for captures from computer move
-          const { newNodeColors: afterComputerCapture, totalCaptured: computerCaptured } = captureGroups(computerNodeColors, 'red')
+          setAiThinking(false)
           
-          // Update node colors with computer move
-          setNodeColors(afterComputerCapture)
-          
-          // Update capture count for computer
-          if (computerCaptured.red > 0) {
-            setCaptureCount(prev => ({
-              ...prev,
-              red: prev.red + computerCaptured.red
-            }))
+          if (computerMove !== null) {
+            const computerNodeColors = {
+              ...afterCapture,
+              [computerMove]: 'red'
+            }
+            
+            // Track computer's last move for highlighting
+            setLastComputerMove(computerMove)
+            
+            // Check for captures from computer move
+            const { newNodeColors: afterComputerCapture, totalCaptured: computerCaptured } = captureGroups(computerNodeColors, 'red')
+            
+            // Update node colors with computer move
+            setNodeColors(afterComputerCapture)
+            
+            // Update capture count for computer and check for win
+            let updatedComputerCaptureCount = updatedCaptureCount
+            if (computerCaptured.red > 0) {
+              updatedComputerCaptureCount = {
+                ...updatedCaptureCount,
+                red: updatedCaptureCount.red + computerCaptured.red
+              }
+              setCaptureCount(updatedComputerCaptureCount)
+            }
+            
+            // Check for win condition after computer move
+            const computerWinResult = checkWinCondition(updatedComputerCaptureCount)
+            if (computerWinResult) {
+              setGameResult(computerWinResult)
+              setGameEnded(true)
+              // Mark level as completed if player wins in challenge mode
+              markLevelCompleted(computerWinResult)
+              if (typeof setShowTerritoryScore === 'function') {
+                setShowTerritoryScore(true)
+              }
+              return // End game
+            }
+            
+            // Computer made a move (not a pass)
+            setLastMoveWasPass(false)
+          } else {
+            // Computer passed - clear last move highlight
+            setLastComputerMove(null)
+            if (lastMoveWasPass) {
+              // Both player and computer passed - end game (only for territory mode)
+              if (winCriteria === 'territory') {
+                checkGameEnd(afterCapture)
+              }
+            } else {
+              setLastMoveWasPass(true)
+            }
           }
-        }
+        }, 100) // Small delay to show thinking indicator
       }, 500) // Half second delay for computer move
     }
   }
@@ -737,7 +1400,7 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
           <meshStandardMaterial 
             color={getNodeColor(index)}
             emissive={getNodeColor(index)}
-            emissiveIntensity={0.2}
+            emissiveIntensity={lastComputerMove === index ? 0.4 : 0.2}
             roughness={0.3}
             metalness={0.1}
             opacity={getNodeOpacity(index, cameraPosition)}
@@ -840,45 +1503,248 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
           </mesh>
         )
       }).filter(Boolean)}
+      
+      {/* Render internal group edges as thin cylinders */}
+      {Array.from(hoveredInternalGroupEdges).map((edge, index) => {
+        const startPoint = points[edge.from]
+        const endPoint = points[edge.to]
+        if (!startPoint || !endPoint) return null
+        
+        const direction = new THREE.Vector3().subVectors(endPoint, startPoint)
+        const length = direction.length()
+        const center = new THREE.Vector3().addVectors(startPoint, endPoint).multiplyScalar(0.5)
+        
+        // Get the hovered group's color
+        let highlightColor = "#ffcc33" // Default yellow
+        if (hoveredGroup.size > 0) {
+          const firstNodeIndex = hoveredGroup.values().next().value
+          const groupColorName = nodeColors[firstNodeIndex] || 'gray'
+          if (groupColorName === 'blue') {
+            highlightColor = "#60a5fa"
+          } else if (groupColorName === 'red') {
+            highlightColor = "#e11d48"
+          }
+        }
+        
+        // Calculate rotation to align cylinder with edge direction
+        const up = new THREE.Vector3(0, 1, 0)
+        const quaternion = new THREE.Quaternion().setFromUnitVectors(up, direction.normalize())
+        
+        return (
+          <mesh 
+            key={`internal-highlight-${index}`} 
+            position={[center.x, center.y, center.z]}
+            quaternion={quaternion}
+          >
+            <cylinderGeometry args={[0.02, 0.02, length, 8]} />
+            <meshBasicMaterial color={highlightColor} />
+          </mesh>
+        )
+      }).filter(Boolean)}
     </group>
   )
 }
 
-function TetrahedralLattice({ size, selectedColor, captureCount, setCaptureCount, territoryScore, setTerritoryScore, showTerritoryScore, gameMode, aiMode, showNodeNumbers, showEdgeNumbers }) {
+function TetrahedralLattice({ size, selectedColor, captureCount, setCaptureCount, territoryScore, setTerritoryScore, showTerritoryScore, setShowTerritoryScore, gameMode, aiMode, winCriteria, showNodeNumbers, showEdgeNumbers, challengeLevel, completedLevels, setCompletedLevels }) {
+  // Create a ref to access the game state from the inner component
+  const gameStateRef = useRef({ gameEnded: false, gameResult: null })
+  
   return (
-    <Canvas
-      camera={{ position: [10, 10, 10], fov: 75 }}
-      style={{ width: '100%', height: '500px' }}
+    <div style={{ position: 'relative', width: '100%', height: '500px' }}>
+      <Canvas
+        camera={{ position: [10, 10, 10], fov: 75 }}
+        style={{ width: '100%', height: '500px' }}
+      >
+        <ambientLight intensity={0.8} />
+        <pointLight position={[10, 10, 10]} intensity={1.0} />
+        <pointLight position={[-10, 10, -10]} intensity={0.8} />
+        <pointLight position={[10, -10, 10]} intensity={0.6} />
+        <directionalLight position={[0, 20, 0]} intensity={0.5} />
+        
+        
+        <TetrahedralLatticePoints 
+          size={size} 
+          selectedColor={selectedColor} 
+          captureCount={captureCount}
+          setCaptureCount={setCaptureCount}
+          territoryScore={territoryScore}
+          setTerritoryScore={setTerritoryScore}
+          showTerritoryScore={showTerritoryScore}
+          setShowTerritoryScore={setShowTerritoryScore}
+          gameMode={gameMode}
+          aiMode={aiMode}
+          winCriteria={winCriteria}
+          showNodeNumbers={showNodeNumbers}
+          showEdgeNumbers={showEdgeNumbers}
+          challengeLevel={challengeLevel}
+          completedLevels={completedLevels}
+          setCompletedLevels={setCompletedLevels}
+          gameStateRef={gameStateRef}
+        />
+        
+        <OrbitControls
+          enableDamping
+          dampingFactor={0.05}
+          rotateSpeed={1}
+          enableZoom={true}
+          enablePan={true}
+        />
+      </Canvas>
+      
+      <GameOverlay gameStateRef={gameStateRef} />
+      <AIThinkingOverlay gameStateRef={gameStateRef} />
+    </div>
+  )
+}
+
+// Game Over Overlay Component
+function GameOverlay({ gameStateRef }) {
+  const [gameEnded, setGameEnded] = useState(false)
+  const [gameResult, setGameResult] = useState(null)
+  
+  // Check game state periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (gameStateRef.current) {
+        setGameEnded(gameStateRef.current.gameEnded)
+        setGameResult(gameStateRef.current.gameResult)
+      }
+    }, 100)
+    
+    return () => clearInterval(interval)
+  }, [gameStateRef])
+  
+  if (!gameEnded) return null
+  
+  const getResultMessage = () => {
+    switch (gameResult) {
+      case 'win':
+        return 'You Win!'
+      case 'lose':
+        return 'You Lose!'
+      case 'tie':
+        return 'Tie Game!'
+      default:
+        return 'Game Over'
+    }
+  }
+  
+  const getResultColor = () => {
+    switch (gameResult) {
+      case 'win':
+        return '#10b981' // Green
+      case 'lose':
+        return '#ef4444' // Red
+      case 'tie':
+        return '#6b7280' // Gray
+      default:
+        return '#6b7280'
+    }
+  }
+  
+  return (
+    <div 
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10,
+        cursor: 'pointer'
+      }}
+      onClick={() => {
+        // Trigger restart by dispatching a custom event
+        window.dispatchEvent(new CustomEvent('restartGame'))
+      }}
     >
-      <ambientLight intensity={0.8} />
-      <pointLight position={[10, 10, 10]} intensity={1.0} />
-      <pointLight position={[-10, 10, -10]} intensity={0.8} />
-      <pointLight position={[10, -10, 10]} intensity={0.6} />
-      <directionalLight position={[0, 20, 0]} intensity={0.5} />
-      
-      
-      <TetrahedralLatticePoints 
-        size={size} 
-        selectedColor={selectedColor} 
-        captureCount={captureCount}
-        setCaptureCount={setCaptureCount}
-        territoryScore={territoryScore}
-        setTerritoryScore={setTerritoryScore}
-        showTerritoryScore={showTerritoryScore}
-        gameMode={gameMode}
-        aiMode={aiMode}
-        showNodeNumbers={showNodeNumbers}
-        showEdgeNumbers={showEdgeNumbers}
-      />
-      
-      <OrbitControls
-        enableDamping
-        dampingFactor={0.05}
-        rotateSpeed={1}
-        enableZoom={true}
-        enablePan={true}
-      />
-    </Canvas>
+      <div style={{
+        backgroundColor: 'white',
+        padding: '2rem',
+        borderRadius: '12px',
+        textAlign: 'center',
+        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
+        maxWidth: '300px'
+      }}>
+        <h2 style={{
+          fontSize: '2rem',
+          fontWeight: 'bold',
+          color: getResultColor(),
+          marginBottom: '1rem',
+          margin: 0
+        }}>
+          {getResultMessage()}
+        </h2>
+        <p style={{
+          color: '#6b7280',
+          fontSize: '0.875rem',
+          marginBottom: '1rem',
+          margin: '0.5rem 0'
+        }}>
+          Click anywhere to restart
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// AI Thinking Overlay Component
+function AIThinkingOverlay({ gameStateRef }) {
+  const [aiThinking, setAiThinking] = useState(false)
+  
+  // Check AI thinking state periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (gameStateRef.current) {
+        setAiThinking(gameStateRef.current.aiThinking || false)
+      }
+    }, 50) // Check more frequently for responsive UI
+    
+    return () => clearInterval(interval)
+  }, [gameStateRef])
+  
+  if (!aiThinking) return null
+  
+  return (
+    <div style={{
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      color: 'white',
+      padding: '1rem 2rem',
+      borderRadius: '8px',
+      fontSize: '1.2rem',
+      fontWeight: '500',
+      zIndex: 5,
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+    }}>
+      <div style={{
+        width: '20px',
+        height: '20px',
+        border: '2px solid #ffffff',
+        borderTopColor: 'transparent',
+        borderRadius: '50%',
+        animation: 'spin 1s linear infinite'
+      }}></div>
+      AI Thinking...
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `
+      }} />
+    </div>
   )
 }
 
