@@ -3,7 +3,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Sphere, Text } from '@react-three/drei'
 import * as THREE from 'three'
 
-function TetrahedralLatticePoints({ size, selectedColor, cloudiness, captureCount, setCaptureCount, territoryScore, setTerritoryScore, showTerritoryScore, gameMode, aiMode, showNodeNumbers, showEdgeNumbers }) {
+function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptureCount, territoryScore, setTerritoryScore, showTerritoryScore, gameMode, aiMode, showNodeNumbers, showEdgeNumbers }) {
   const groupRef = useRef()
   const [nodeColors, setNodeColors] = useState({})
   const [hoveredNode, setHoveredNode] = useState(null)
@@ -450,7 +450,13 @@ function TetrahedralLatticePoints({ size, selectedColor, cloudiness, captureCoun
     }
   }, [showTerritoryScore, nodeColors])
   
-  const { regularLineGeometry, highlightedLineGeometry } = useMemo(() => {
+  // Initialize line geometry
+  useEffect(() => {
+    const initialGeometry = getLineGeometry(cameraPosition)
+    setLineGeometry(initialGeometry)
+  }, [points, edgeIndices, hoveredGroupEdges, hoveredGroup, nodeColors])
+  
+  const getLineGeometry = (cameraPosition) => {
     const regularGeometry = new THREE.BufferGeometry()
     const highlightedGeometry = new THREE.BufferGeometry()
     
@@ -505,26 +511,45 @@ function TetrahedralLatticePoints({ size, selectedColor, cloudiness, captureCoun
         regularPositions.push(startPoint.x, startPoint.y, startPoint.z)
         regularPositions.push(endPoint.x, endPoint.y, endPoint.z)
         
-        if (cloudiness) {
-          // Calculate opacity for line based on average z-depth of endpoints
-          const avgZ = (startPoint.z + endPoint.z) / 2
-          const maxZ = Math.max(...points.map(p => p.z))
-          const minZ = Math.min(...points.map(p => p.z))
-          const zRange = maxZ - minZ
-          
-          let alpha = 1.0
-          if (zRange > 0) {
-            const normalizedZ = (avgZ - minZ) / zRange
-            alpha = 0.2 + (normalizedZ * 0.8)
-          }
-          
-          regularColors.push(0.4, 0.45, 0.55, alpha) // Start point
-          regularColors.push(0.4, 0.45, 0.55, alpha) // End point
-        } else {
-          // Default gray color
+        // Calculate opacity for line based on distance from camera for fog effect
+        if (!cameraPosition) {
           regularColors.push(0.4, 0.45, 0.55, 1.0) // Start point
           regularColors.push(0.4, 0.45, 0.55, 1.0) // End point
+          return
         }
+        
+        // Calculate average distance from camera to midpoint of edge
+        const midPoint = {
+          x: (startPoint.x + endPoint.x) / 2,
+          y: (startPoint.y + endPoint.y) / 2,
+          z: (startPoint.z + endPoint.z) / 2
+        }
+        
+        const distance = Math.sqrt(
+          Math.pow(midPoint.x - cameraPosition.x, 2) +
+          Math.pow(midPoint.y - cameraPosition.y, 2) +
+          Math.pow(midPoint.z - cameraPosition.z, 2)
+        )
+        
+        // Calculate distances for all points to get min/max
+        const distances = points.map(p => Math.sqrt(
+          Math.pow(p.x - cameraPosition.x, 2) +
+          Math.pow(p.y - cameraPosition.y, 2) +
+          Math.pow(p.z - cameraPosition.z, 2)
+        ))
+        
+        const minDistance = Math.min(...distances)
+        const maxDistance = Math.max(...distances)
+        const distanceRange = maxDistance - minDistance
+        
+        let alpha = 1.0
+        if (distanceRange > 0) {
+          const normalizedDistance = (distance - minDistance) / distanceRange
+          alpha = 1.0 - (normalizedDistance * 0.8) // Fog effect: 0.2-1.0 opacity range
+        }
+        
+        regularColors.push(0.4, 0.45, 0.55, alpha) // Start point
+        regularColors.push(0.4, 0.45, 0.55, alpha) // End point
       }
     })
     
@@ -538,15 +563,21 @@ function TetrahedralLatticePoints({ size, selectedColor, cloudiness, captureCoun
     
     
     return { regularLineGeometry: regularGeometry, highlightedLineGeometry: highlightedGeometry }
-  }, [edgeIndices, cloudiness, points, hoveredGroupEdges, hoveredGroup, nodeColors])
+  }
   
-  // Animation loop for rotation - disabled by default
-  // useFrame((state, delta) => {
-  //   if (groupRef.current) {
-  //     groupRef.current.rotation.y += delta * 0.5 // Rotate around Y axis
-  //     groupRef.current.rotation.x += delta * 0.2 // Slight rotation around X axis
-  //   }
-  // })
+  // State for camera position and line geometry
+  const [cameraPosition, setCameraPosition] = useState({ x: 10, y: 10, z: 10 })
+  const [lineGeometry, setLineGeometry] = useState(null)
+  
+  // Update camera position and line geometry on each frame
+  useFrame((state) => {
+    const newCameraPosition = state.camera.position
+    setCameraPosition({ x: newCameraPosition.x, y: newCameraPosition.y, z: newCameraPosition.z })
+    
+    // Update line geometry with new camera position
+    const newGeometry = getLineGeometry(newCameraPosition)
+    setLineGeometry(newGeometry)
+  })
   
   // Handle node click to apply selected color and check for captures
   const handleNodeClick = (nodeIndex, event) => {
@@ -651,24 +682,35 @@ function TetrahedralLatticePoints({ size, selectedColor, cloudiness, captureCoun
     return 1.0
   }
   
-  // Get opacity based on depth (z-coordinate) for cloudiness effect
-  const getNodeOpacity = (nodeIndex) => {
-    if (!cloudiness) return 1.0
-    
+  // Get opacity based on distance from camera for fog effect
+  const getNodeOpacity = (nodeIndex, cameraPosition) => {
     const point = points[nodeIndex]
-    if (!point) return 1.0
+    if (!point || !cameraPosition) return 1.0
     
-    // Calculate opacity based on z-depth
-    // Points further from camera (more negative z) become more transparent
-    const maxZ = Math.max(...points.map(p => p.z))
-    const minZ = Math.min(...points.map(p => p.z))
-    const zRange = maxZ - minZ
+    // Calculate distance from camera to point
+    const distance = Math.sqrt(
+      Math.pow(point.x - cameraPosition.x, 2) +
+      Math.pow(point.y - cameraPosition.y, 2) +
+      Math.pow(point.z - cameraPosition.z, 2)
+    )
     
-    if (zRange === 0) return 1.0
+    // Calculate distances for all points to get min/max
+    const distances = points.map(p => Math.sqrt(
+      Math.pow(p.x - cameraPosition.x, 2) +
+      Math.pow(p.y - cameraPosition.y, 2) +
+      Math.pow(p.z - cameraPosition.z, 2)
+    ))
     
-    // Normalize z to 0-1 range, then map to opacity 0.3-1.0
-    const normalizedZ = (point.z - minZ) / zRange
-    return 0.3 + (normalizedZ * 0.7)
+    const minDistance = Math.min(...distances)
+    const maxDistance = Math.max(...distances)
+    const distanceRange = maxDistance - minDistance
+    
+    if (distanceRange === 0) return 1.0
+    
+    // Normalize distance to 0-1 range, then map to opacity 0.3-1.0 for fog effect
+    // Closer points (smaller distance) = higher opacity
+    const normalizedDistance = (distance - minDistance) / distanceRange
+    return 1.0 - (normalizedDistance * 0.7)
   }
   
   return (
@@ -698,8 +740,8 @@ function TetrahedralLatticePoints({ size, selectedColor, cloudiness, captureCoun
             emissiveIntensity={0.2}
             roughness={0.3}
             metalness={0.1}
-            opacity={getNodeOpacity(index)}
-            transparent={cloudiness}
+            opacity={getNodeOpacity(index, cameraPosition)}
+            transparent={true}
           />
         </Sphere>
       ))}
@@ -751,13 +793,15 @@ function TetrahedralLatticePoints({ size, selectedColor, cloudiness, captureCoun
       })}
       
       {/* Render regular edges as lines */}
-      <lineSegments geometry={regularLineGeometry}>
-        <lineBasicMaterial 
-          vertexColors={true}
-          transparent={cloudiness}
-          linewidth={1}
-        />
-      </lineSegments>
+      {lineGeometry && (
+        <lineSegments geometry={lineGeometry.regularLineGeometry}>
+          <lineBasicMaterial 
+            vertexColors={true}
+            transparent={true}
+            linewidth={1}
+          />
+        </lineSegments>
+      )}
       
       {/* Render highlighted edges as thick cylinders */}
       {Array.from(hoveredGroupEdges).map((edge, index) => {
@@ -800,12 +844,11 @@ function TetrahedralLatticePoints({ size, selectedColor, cloudiness, captureCoun
   )
 }
 
-function TetrahedralLattice({ size, selectedColor, cloudiness, captureCount, setCaptureCount, territoryScore, setTerritoryScore, showTerritoryScore, gameMode, aiMode, showNodeNumbers, showEdgeNumbers }) {
+function TetrahedralLattice({ size, selectedColor, captureCount, setCaptureCount, territoryScore, setTerritoryScore, showTerritoryScore, gameMode, aiMode, showNodeNumbers, showEdgeNumbers }) {
   return (
     <Canvas
       camera={{ position: [10, 10, 10], fov: 75 }}
       style={{ width: '100%', height: '500px' }}
-      fog={cloudiness ? { color: '#f0f0f0', near: 5, far: 25 } : undefined}
     >
       <ambientLight intensity={0.8} />
       <pointLight position={[10, 10, 10]} intensity={1.0} />
@@ -813,14 +856,10 @@ function TetrahedralLattice({ size, selectedColor, cloudiness, captureCount, set
       <pointLight position={[10, -10, 10]} intensity={0.6} />
       <directionalLight position={[0, 20, 0]} intensity={0.5} />
       
-      {cloudiness && (
-        <fog attach="fog" color="#f0f0f0" near={5} far={25} />
-      )}
       
       <TetrahedralLatticePoints 
         size={size} 
         selectedColor={selectedColor} 
-        cloudiness={cloudiness}
         captureCount={captureCount}
         setCaptureCount={setCaptureCount}
         territoryScore={territoryScore}

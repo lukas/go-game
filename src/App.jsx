@@ -2,12 +2,10 @@ import React, { useState } from 'react'
 import TetrahedralLattice from './components/TetrahedralLattice'
 import SizeSlider from './components/SizeSlider'
 import ColorPicker from './components/ColorPicker'
-import CloudinessToggle from './components/CloudinessToggle'
 
 function App() {
   const [latticeSize, setLatticeSize] = useState(4)
   const [selectedColor, setSelectedColor] = useState('blue')
-  const [cloudiness, setCloudiness] = useState(false)
   const [captureCount, setCaptureCount] = useState({ blue: 0, red: 0 })
   const [territoryScore, setTerritoryScore] = useState({ blue: 0, red: 0, neutral: 0 })
   const [showTerritoryScore, setShowTerritoryScore] = useState(false)
@@ -197,10 +195,100 @@ function App() {
               </div>
             )}
             
-            <CloudinessToggle 
-              enabled={cloudiness}
-              onToggle={() => setCloudiness(!cloudiness)}
-            />
+            
+            <div style={{
+              padding: '1rem',
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+              margin: '1rem 0'
+            }}>
+              <div style={{
+                textAlign: 'center',
+                color: '#60a5fa',
+                fontWeight: '500',
+                marginBottom: '0.5rem'
+              }}>
+                Blue Captures: {captureCount.blue}
+              </div>
+              <div style={{
+                textAlign: 'center',
+                color: '#e11d48',
+                fontWeight: '500'
+              }}>
+                Red Captures: {captureCount.red}
+              </div>
+            </div>
+
+            <div style={{
+              padding: '1rem',
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+              margin: '1rem 0'
+            }}>
+              <button
+                onClick={() => setShowTerritoryScore(!showTerritoryScore)}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  backgroundColor: '#4f46e5',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  marginBottom: showTerritoryScore ? '1rem' : '0',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#3730a3'
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = '#4f46e5'
+                }}
+              >
+                {showTerritoryScore ? 'Hide Territory Score' : 'Calculate Territory Score'}
+              </button>
+              
+              {showTerritoryScore && (
+                <div>
+                  <div style={{
+                    textAlign: 'center',
+                    color: '#60a5fa',
+                    fontWeight: '500',
+                    marginBottom: '0.5rem'
+                  }}>
+                    Blue Territory: {territoryScore.blue}
+                  </div>
+                  <div style={{
+                    textAlign: 'center',
+                    color: '#e11d48',
+                    fontWeight: '500',
+                    marginBottom: '0.5rem'
+                  }}>
+                    Red Territory: {territoryScore.red}
+                  </div>
+                  <div style={{
+                    textAlign: 'center',
+                    color: '#6b7280',
+                    fontWeight: '500',
+                    marginBottom: '0.5rem'
+                  }}>
+                    Neutral: {territoryScore.neutral}
+                  </div>
+                  <hr style={{ margin: '0.5rem 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
+                  <div style={{
+                    textAlign: 'center',
+                    fontWeight: '600',
+                    color: '#374151'
+                  }}>
+                    Final Score: Blue {territoryScore.blue + captureCount.blue} - Red {territoryScore.red + captureCount.red}
+                  </div>
+                </div>
+              )}
+            </div>
             
             <div style={{
               padding: '1rem',
@@ -329,100 +417,6 @@ function App() {
                 </div>
               )}
             </div>
-            
-            <div style={{
-              padding: '1rem',
-              backgroundColor: 'white',
-              borderRadius: '8px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-              margin: '1rem 0'
-            }}>
-              <div style={{
-                textAlign: 'center',
-                color: '#60a5fa',
-                fontWeight: '500',
-                marginBottom: '0.5rem'
-              }}>
-                Blue Captures: {captureCount.blue}
-              </div>
-              <div style={{
-                textAlign: 'center',
-                color: '#e11d48',
-                fontWeight: '500'
-              }}>
-                Red Captures: {captureCount.red}
-              </div>
-            </div>
-
-            <div style={{
-              padding: '1rem',
-              backgroundColor: 'white',
-              borderRadius: '8px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-              margin: '1rem 0'
-            }}>
-              <button
-                onClick={() => setShowTerritoryScore(!showTerritoryScore)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  backgroundColor: '#4f46e5',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '1rem',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  marginBottom: showTerritoryScore ? '1rem' : '0',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = '#3730a3'
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = '#4f46e5'
-                }}
-              >
-                {showTerritoryScore ? 'Hide Territory Score' : 'Calculate Territory Score'}
-              </button>
-              
-              {showTerritoryScore && (
-                <div>
-                  <div style={{
-                    textAlign: 'center',
-                    color: '#60a5fa',
-                    fontWeight: '500',
-                    marginBottom: '0.5rem'
-                  }}>
-                    Blue Territory: {territoryScore.blue}
-                  </div>
-                  <div style={{
-                    textAlign: 'center',
-                    color: '#e11d48',
-                    fontWeight: '500',
-                    marginBottom: '0.5rem'
-                  }}>
-                    Red Territory: {territoryScore.red}
-                  </div>
-                  <div style={{
-                    textAlign: 'center',
-                    color: '#6b7280',
-                    fontWeight: '500',
-                    marginBottom: '0.5rem'
-                  }}>
-                    Neutral: {territoryScore.neutral}
-                  </div>
-                  <hr style={{ margin: '0.5rem 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
-                  <div style={{
-                    textAlign: 'center',
-                    fontWeight: '600',
-                    color: '#374151'
-                  }}>
-                    Final Score: Blue {territoryScore.blue + captureCount.blue} - Red {territoryScore.red + captureCount.red}
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
           
           <div style={{
@@ -435,7 +429,6 @@ function App() {
             <TetrahedralLattice 
               size={latticeSize} 
               selectedColor={selectedColor} 
-              cloudiness={cloudiness} 
               captureCount={captureCount}
               setCaptureCount={setCaptureCount}
               territoryScore={territoryScore}
@@ -446,16 +439,19 @@ function App() {
               showNodeNumbers={showNodeNumbers}
               showEdgeNumbers={showEdgeNumbers}
             />
+            <div style={{
+              textAlign: 'center',
+              padding: '1rem',
+              color: '#666',
+              fontSize: '0.875rem',
+              borderTop: '1px solid #e5e7eb'
+            }}>
+              {gameMode === 'explore' 
+                ? 'Use mouse to rotate, zoom, and pan the lattice • Select a color above, then click nodes to paint them'
+                : 'Use mouse to rotate, zoom, and pan the lattice • Click nodes to place blue stones (computer plays red)'
+              }
+            </div>
           </div>
-        </div>
-        
-        <div style={{
-          textAlign: 'center',
-          marginTop: '1rem',
-          color: '#666',
-          fontSize: '0.875rem'
-        }}>
-          Use mouse to rotate, zoom, and pan the lattice • Select a color above, then click nodes to paint them
         </div>
       </div>
     </div>
