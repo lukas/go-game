@@ -9,7 +9,7 @@ function App() {
   const [captureCount, setCaptureCount] = useState({ blue: 0, red: 0 })
   const [territoryScore, setTerritoryScore] = useState({ blue: 0, red: 0, neutral: 0 })
   const [showTerritoryScore, setShowTerritoryScore] = useState(false)
-  const [gameMode, setGameMode] = useState('explore')
+  const [gameMode, setGameMode] = useState('challenge')
   const [aiMode, setAiMode] = useState('random')
   const [winCriteria, setWinCriteria] = useState('territory') // 'capture1', 'capture3', 'territory'
   const [challengeLevel, setChallengeLevel] = useState(1) // 1, 2, or 3
