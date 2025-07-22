@@ -1356,33 +1356,48 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
   
   // Get color for a specific node
   const getNodeColor = (nodeIndex) => {
-    const savedColor = nodeColors[nodeIndex] || 'gray'
+    const savedColor = nodeColors[nodeIndex]
     
     if (savedColor === 'blue') {
-      return "#60a5fa" // Lighter blue for better contrast
+      return "#60a5fa" // Bright light blue
     } else if (savedColor === 'red') {
-      return "#e11d48"
-    } else if (savedColor === 'gray' && showTerritoryScore) {
-      // Show territory ownership when scoring is enabled
-      const territoryOwner = territoryOwnership[nodeIndex] || 'neutral'
-      
-      if (territoryOwner === 'blue') {
-        return "#bfdbfe" // Light blue for blue territory
-      } else if (territoryOwner === 'red') {
-        return "#fecaca" // Light red for red territory
-      } else {
-        return "#f3f4f6" // Neutral territory color
-      }
+      return "#f87171" // Bright light red
     } else {
-      return "#d1d5db" // Much lighter gray color
+      // For all empty nodes (undefined or 'gray'), use colorful pattern
+      // Exception: when showing territory and it's owned territory
+      if (showTerritoryScore) {
+        const territoryOwner = territoryOwnership[nodeIndex] || 'neutral'
+        
+        if (territoryOwner === 'blue') {
+          return "#bfdbfe" // Light blue for blue territory
+        } else if (territoryOwner === 'red') {
+          return "#fecaca" // Light red for red territory
+        }
+        // Fall through to colorful pattern for neutral territory
+      }
+      
+      // Default: alternating green and yellow pattern for all empty spheres
+      const point = points[nodeIndex]
+      const patternValue = Math.floor(point.x * 10) + Math.floor(point.y * 10) + Math.floor(point.z * 10)
+      const colorIndex = Math.abs(patternValue) % 2
+      
+      const colors = [
+        "#7c3aed", // Bright purple
+        "#a855f7"  // Slightly lighter purple
+      ]
+      
+      return colors[colorIndex]
     }
   }
   
   // Get scale for hover effect
   const getNodeScale = (nodeIndex) => {
-    if (hoveredNode === nodeIndex) return 1.3
-    if (hoveredGroup.has(nodeIndex)) return 1.2
-    return 1.0
+    const hasStone = nodeColors[nodeIndex] // Check if node has a stone (blue or red)
+    const baseScale = hasStone ? 1.0 : 0.6 // Empty nodes are smaller
+    
+    if (hoveredNode === nodeIndex) return baseScale * 1.3
+    if (hoveredGroup.has(nodeIndex)) return baseScale * 1.2
+    return baseScale
   }
   
   // Get opacity based on distance from camera for fog effect
@@ -1443,8 +1458,8 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
             emissiveIntensity={lastComputerMove === index ? 0.4 : 0.2}
             roughness={0.3}
             metalness={0.1}
-            opacity={getNodeOpacity(index, cameraPosition)}
-            transparent={true}
+            opacity={1.0}
+            transparent={false}
           />
         </Sphere>
       ))}

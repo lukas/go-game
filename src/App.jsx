@@ -31,11 +31,20 @@ import ColorPicker from './components/ColorPicker'
 
 const theme = createTheme({
   palette: {
+    mode: 'dark',
     primary: {
-      main: '#4f46e5',
+      main: '#60a5fa',
     },
     secondary: {
-      main: '#6b7280',
+      main: '#9ca3af',
+    },
+    background: {
+      default: '#111827',
+      paper: '#1f2937',
+    },
+    text: {
+      primary: '#f9fafb',
+      secondary: '#d1d5db',
     },
   },
 })
@@ -94,7 +103,7 @@ function App() {
       <div style={{
       minHeight: '100vh',
       fontFamily: 'Arial, sans-serif',
-      backgroundColor: '#f0f0f0',
+      backgroundColor: '#111827',
       padding: '2rem'
     }}>
       <div style={{
@@ -109,7 +118,7 @@ function App() {
           gap: '0.5rem'
         }}>
           <h1 style={{ 
-            color: '#333', 
+            color: '#f9fafb', 
             textAlign: 'center',
             margin: 0
           }}>
@@ -304,7 +313,7 @@ function App() {
           
           <div style={{
             flex: 1,
-            backgroundColor: 'white',
+            backgroundColor: 'black',
             borderRadius: '8px',
             boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
             overflow: 'hidden'
@@ -329,8 +338,7 @@ function App() {
               setCompletedLevels={setCompletedLevels}
             />
             <div style={{
-              padding: '1rem',
-              borderTop: '1px solid #e5e7eb'
+              padding: '1rem'
             }}>
               <div style={{
                 display: 'flex',
@@ -340,7 +348,7 @@ function App() {
               }}>
                 <div style={{
                   textAlign: 'center',
-                  color: '#60a5fa',
+                  color: '#93c5fd',
                   fontWeight: '500',
                   fontSize: '0.875rem'
                 }}>
@@ -348,7 +356,7 @@ function App() {
                 </div>
                 <div style={{
                   textAlign: 'center',
-                  color: '#e11d48',
+                  color: '#fca5a5',
                   fontWeight: '500',
                   fontSize: '0.875rem'
                 }}>
@@ -358,14 +366,14 @@ function App() {
               {(gameMode === 'vs-computer' || gameMode === 'challenge') && (
                 <div style={{
                   textAlign: 'center',
-                  color: '#6b7280',
+                  color: '#d1d5db',
                   fontWeight: '500',
                   fontSize: '0.75rem',
                   marginBottom: '1rem',
                   padding: '0.5rem',
-                  backgroundColor: '#f9fafb',
+                  backgroundColor: '#374151',
                   borderRadius: '4px',
-                  border: '1px solid #e5e7eb'
+                  border: '1px solid #4b5563'
                 }}>
                   Win Condition: {
                     gameMode === 'challenge' 
@@ -384,7 +392,7 @@ function App() {
                 <div style={{
                   flex: 1,
                   textAlign: 'center',
-                  color: '#666',
+                  color: '#d1d5db',
                   fontSize: '0.875rem'
                 }}>
                   {gameMode === 'explore' 
@@ -400,7 +408,7 @@ function App() {
                     }}
                     style={{
                       padding: '0.5rem 1rem',
-                      backgroundColor: '#6b7280',
+                      backgroundColor: '#4b5563',
                       color: 'white',
                       border: 'none',
                       borderRadius: '4px',
@@ -411,10 +419,10 @@ function App() {
                       marginLeft: '1rem'
                     }}
                     onMouseEnter={(e) => {
-                      e.target.style.backgroundColor = '#4b5563'
+                      e.target.style.backgroundColor = '#374151'
                     }}
                     onMouseLeave={(e) => {
-                      e.target.style.backgroundColor = '#6b7280'
+                      e.target.style.backgroundColor = '#4b5563'
                     }}
                   >
                     Pass
