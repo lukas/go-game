@@ -1,0 +1,128 @@
+# 3D Go - Tetrahedral Lattice Codebase Layout
+
+This file provides a comprehensive guide to the codebase structure for AI assistants and LLMs working on this project.
+
+## Project Overview
+A React-based 3D Go game played on a tetrahedral lattice structure. Uses Three.js for 3D visualization, Material-UI for interface, and implements full Go game logic with AI opponents.
+
+## Key Architecture Concepts
+- **Tetrahedral Lattice**: 3D structure with A-site and B-site sublattices, each node having exactly 4 neighbors
+- **Go Game Logic**: Traditional capture mechanics adapted for 3D space with territory calculation
+- **React + Three.js**: UI built with React, 3D visualization with React Three Fiber
+- **Material-UI Theming**: Dark theme with custom styling throughout
+
+## Directory Structure
+
+### Root Level
+- `package.json` - Dependencies: React 19, Three.js ecosystem, MUI, Vite, Playwright
+- `vite.config.js` - Build configuration
+- `index.html` - Entry point
+- `start.sh` - Automated startup with dependency checking
+- `CLAUDE.md` - Development instructions and commands
+- `playwright.config.js` - E2E testing config
+
+### `/src/` - Main Application Code
+- `main.jsx` - React entry point, renders App component
+- `App.jsx` - **Main application file** containing:
+  - All game state management
+  - UI layout with controls and 3D canvas
+  - Help dialog with markdown rendering
+  - Game mode selection (explore, vs computer, challenge)
+  - Theme configuration (dark mode)
+
+### `/src/components/` - React Components
+- `TetrahedralLattice.jsx` - **Core 3D game component**:
+  - Tetrahedral lattice generation algorithms
+  - Three.js scene setup and rendering
+  - Mouse controls (rotate, zoom, pan)
+  - Stone placement and capture logic
+  - AI opponent implementations
+  - Game over detection and scoring
+  - Territory calculation
+  - Animation systems
+- `SizeSlider.jsx` - Lattice size control (3-7 nodes)
+- `ColorPicker.jsx` - Stone color selection
+- `CloudinessToggle.jsx` - Depth effect toggle (unused)
+
+### `/public/` - Static Assets
+- `help.md` - Game instructions loaded dynamically by App.jsx
+- `favicon.svg` - Website icon
+
+### `/tests/` - Testing
+- `diamond-lattice.spec.js` - Playwright E2E tests for UI interactions
+- `src/components/TetrahedralLattice.test.js` - Unit tests for lattice generation
+
+### `/node_modules/` - Dependencies
+Key packages:
+- `react`, `react-dom` - UI framework
+- `three`, `@react-three/fiber`, `@react-three/drei` - 3D graphics
+- `@mui/material`, `@mui/icons-material` - UI components
+- `vite` - Build tool
+- `@playwright/test` - E2E testing
+
+## Important Implementation Details
+
+### Game State (App.jsx)
+- `latticeSize` - Controls 3D grid dimensions (3-7)
+- `selectedColor` - Current player ('blue'/'red')
+- `gameMode` - 'explore', 'challenge', 'versus'
+- `aiMode` - 'random', 'attack', 'greedy', 'advanced'
+- `winCriteria` - 'capture1', 'capture3', 'territory'
+- `showHelp` - Controls info dialog visibility
+
+### Tetrahedral Lattice Structure
+- **A-sites**: Corner positions of tetrahedra
+- **B-sites**: Centers of tetrahedra
+- **Connections**: Each node connects to exactly 4 neighbors
+- **Coordinates**: 3D positions calculated using tetrahedral geometry
+
+### AI Strategies (TetrahedralLattice.jsx)
+- **Random**: Places stones randomly on empty nodes
+- **Attack**: Prioritizes capturing opponent stones
+- **Greedy**: Focuses on maximizing territory
+- **Advanced**: Complex strategy with multiple objectives
+
+### Styling Patterns
+- Dark theme with colors: `#111827` (bg), `#f9fafb` (text), `#667eea` (primary)
+- Material-UI sx prop for component styling
+- Custom scrollbars and hover effects
+- Gradient backgrounds for dialogs
+
+## Common Development Tasks
+
+### Adding New Features
+- Game logic changes: Modify `TetrahedralLattice.jsx`
+- UI changes: Modify `App.jsx` and components
+- Styling: Use MUI sx prop with theme colors
+
+### Testing
+- E2E tests in `/tests/` using Playwright
+- Unit tests co-located with components
+- Run tests with `npm run test`
+
+### Building/Deployment
+- Development: `npm run dev` or `./start.sh`
+- Build: `npm run build`
+- Preview: `npm run preview`
+
+## Key Functions to Know
+
+### TetrahedralLattice.jsx
+- `generateLattice()` - Creates the 3D node structure
+- `findNeighbors()` - Calculates tetrahedral connections
+- `handleNodeClick()` - Stone placement logic
+- `checkCaptures()` - Implements Go capture rules
+- `calculateTerritory()` - Scores territory ownership
+- `makeAIMove()` - AI decision making
+
+### App.jsx
+- `markdownToHtml()` - Converts help content to styled HTML
+- Game mode handlers and state management
+
+## File Relationships
+- `main.jsx` → `App.jsx` (renders main app)
+- `App.jsx` → `TetrahedralLattice.jsx` (renders 3D game)
+- `App.jsx` → `/public/help.md` (loads help content)
+- All components use MUI theme from `App.jsx`
+
+This structure supports a sophisticated 3D game with full Go mechanics, multiple AI opponents, and comprehensive testing infrastructure.
