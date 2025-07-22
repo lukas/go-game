@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "playwright-testing": {
+      "command": "node",
+      "args": ["mcp-server.js"],
+      "env": {
+        "NODE_ENV": "development"
+      }
+    }
+  }
+}

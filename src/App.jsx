@@ -1,7 +1,50 @@
 import React, { useState, useEffect } from 'react'
+import { ThemeProvider, createTheme } from '@mui/material/styles'
+import { 
+  CssBaseline, 
+  Button, 
+  Dialog, 
+  DialogTitle, 
+  DialogContent, 
+  IconButton, 
+  Typography,
+  Card,
+  CardContent,
+  FormControl,
+  FormLabel,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  Slider,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Switch,
+  FormGroup,
+  Divider,
+  Box,
+  Container,
+  Alert
+} from '@mui/material'
+import { 
+  Info as InfoIcon, 
+  Close as CloseIcon,
+  ExpandMore as ExpandMoreIcon 
+} from '@mui/icons-material'
 import TetrahedralLattice from './components/TetrahedralLattice'
 import SizeSlider from './components/SizeSlider'
 import ColorPicker from './components/ColorPicker'
+
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#4f46e5',
+    },
+    secondary: {
+      main: '#6b7280',
+    },
+  },
+})
 
 function App() {
   const [latticeSize, setLatticeSize] = useState(4)
@@ -53,7 +96,9 @@ function App() {
   }
 
   return (
-    <div style={{
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <div style={{
       minHeight: '100vh',
       fontFamily: 'Arial, sans-serif',
       backgroundColor: '#f0f0f0',
@@ -77,30 +122,15 @@ function App() {
           }}>
             3D Go
           </h1>
-          <button
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<InfoIcon />}
             onClick={() => setShowHelp(true)}
-            style={{
-              position: 'absolute',
-              right: 0,
-              padding: '0.5rem 1rem',
-              backgroundColor: '#6b7280',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = '#4b5563'
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = '#6b7280'
-            }}
+            sx={{ position: 'absolute', right: 0 }}
           >
             Info
-          </button>
+          </Button>
         </div>
         
         <div style={{
@@ -112,305 +142,99 @@ function App() {
             width: '300px',
             flexShrink: 0
           }}>
-            <div style={{
-              padding: '1rem',
-              backgroundColor: 'white',
-              borderRadius: '8px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-              margin: '1rem 0'
-            }}>
-              <label style={{
-                fontSize: '1rem',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '0.5rem',
-                display: 'block'
-              }}>
-                Game Mode:
-              </label>
-              <div style={{
-                display: 'flex',
-                gap: '0.5rem',
-                flexWrap: 'wrap'
-              }}>
-                <button
-                  onClick={() => setGameMode('explore')}
-                  style={{
-                    flex: '1 1 30%',
-                    padding: '0.5rem 0.75rem',
-                    borderRadius: '6px',
-                    border: '2px solid #e5e7eb',
-                    backgroundColor: gameMode === 'explore' ? '#4f46e5' : '#f9fafb',
-                    color: gameMode === 'explore' ? 'white' : '#374151',
-                    fontSize: '0.75rem',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  Explore
-                </button>
-                <button
-                  onClick={() => {
-                    setGameMode('vs-computer')
-                    // Reset the board when switching to Custom vs Computer mode (with small delay)
-                    setTimeout(() => {
-                      window.dispatchEvent(new CustomEvent('restartGame'))
-                    }, 50)
-                  }}
-                  style={{
-                    flex: '1 1 30%',
-                    padding: '0.5rem 0.75rem',
-                    borderRadius: '6px',
-                    border: '2px solid #e5e7eb',
-                    backgroundColor: gameMode === 'vs-computer' ? '#4f46e5' : '#f9fafb',
-                    color: gameMode === 'vs-computer' ? 'white' : '#374151',
-                    fontSize: '0.75rem',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  Custom vs Computer
-                </button>
-                <button
-                  onClick={() => {
-                    setGameMode('challenge')
-                    // Reset the board when switching to Challenge mode (with small delay)
-                    setTimeout(() => {
-                      window.dispatchEvent(new CustomEvent('restartGame'))
-                    }, 50)
-                  }}
-                  style={{
-                    flex: '1 1 30%',
-                    padding: '0.5rem 0.75rem',
-                    borderRadius: '6px',
-                    border: '2px solid #e5e7eb',
-                    backgroundColor: gameMode === 'challenge' ? '#4f46e5' : '#f9fafb',
-                    color: gameMode === 'challenge' ? 'white' : '#374151',
-                    fontSize: '0.75rem',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  Challenge
-                </button>
-              </div>
-            </div>
+            <Card sx={{ mb: 2 }}>
+              <CardContent>
+                <FormControl component="fieldset">
+                  <FormLabel component="legend">Game Mode</FormLabel>
+                  <RadioGroup
+                    value={gameMode}
+                    onChange={(e) => {
+                      setGameMode(e.target.value)
+                      if (e.target.value === 'vs-computer' || e.target.value === 'challenge') {
+                        setTimeout(() => {
+                          window.dispatchEvent(new CustomEvent('restartGame'))
+                        }, 50)
+                      }
+                    }}
+                    row
+                  >
+                    <FormControlLabel value="explore" control={<Radio />} label="Explore" />
+                    <FormControlLabel value="vs-computer" control={<Radio />} label="Custom vs Computer" />
+                    <FormControlLabel value="challenge" control={<Radio />} label="Challenge" />
+                  </RadioGroup>
+                </FormControl>
+              </CardContent>
+            </Card>
             
             {gameMode !== 'challenge' && (
-              <SizeSlider 
-                value={latticeSize}
-                onChange={setLatticeSize}
-                min={1}
-                max={8}
-              />
+              <Card sx={{ mb: 2 }}>
+                <CardContent>
+                  <Typography gutterBottom>Size: {latticeSize}</Typography>
+                  <Slider
+                    value={latticeSize}
+                    onChange={(e, value) => setLatticeSize(value)}
+                    min={1}
+                    max={8}
+                    step={1}
+                    marks
+                    valueLabelDisplay="auto"
+                  />
+                </CardContent>
+              </Card>
             )}
             
             {gameMode === 'challenge' && (
-              <div style={{
-                padding: '1rem',
-                backgroundColor: 'white',
-                borderRadius: '8px',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                margin: '1rem 0'
-              }}>
-                <label style={{
-                  fontSize: '1rem',
-                  fontWeight: '500',
-                  color: '#374151',
-                  marginBottom: '0.5rem',
-                  display: 'block'
-                }}>
-                  Challenge Level:
-                </label>
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.5rem'
-                }}>
-                  <button
-                    onClick={() => setChallengeLevel(1)}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      borderRadius: '6px',
-                      border: '2px solid #e5e7eb',
-                      backgroundColor: challengeLevel === 1 ? '#4f46e5' : '#f9fafb',
-                      color: challengeLevel === 1 ? 'white' : '#374151',
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      textAlign: 'left',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between'
-                    }}
-                  >
-                    <span>Level 1</span>
-                    {completedLevels.has(1) && <span style={{ color: '#10b981' }}>✓</span>}
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (completedLevels.has(1)) {
-                        setChallengeLevel(2)
-                      }
-                    }}
-                    disabled={!completedLevels.has(1)}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      borderRadius: '6px',
-                      border: '2px solid #e5e7eb',
-                      backgroundColor: challengeLevel === 2 ? '#4f46e5' : (!completedLevels.has(1) ? '#f3f4f6' : '#f9fafb'),
-                      color: challengeLevel === 2 ? 'white' : (!completedLevels.has(1) ? '#9ca3af' : '#374151'),
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      cursor: !completedLevels.has(1) ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
-                      textAlign: 'left',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between'
-                    }}
-                  >
-                    <span>Level 2</span>
-                    {completedLevels.has(2) && <span style={{ color: '#10b981' }}>✓</span>}
-                    {!completedLevels.has(1) && <span style={{ color: '#6b7280' }}>🔒</span>}
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (completedLevels.has(2)) {
-                        setChallengeLevel(3)
-                      }
-                    }}
-                    disabled={!completedLevels.has(2)}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      borderRadius: '6px',
-                      border: '2px solid #e5e7eb',
-                      backgroundColor: challengeLevel === 3 ? '#4f46e5' : (!completedLevels.has(2) ? '#f3f4f6' : '#f9fafb'),
-                      color: challengeLevel === 3 ? 'white' : (!completedLevels.has(2) ? '#9ca3af' : '#374151'),
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      cursor: !completedLevels.has(2) ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
-                      textAlign: 'left',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between'
-                    }}
-                  >
-                    <span>Level 3</span>
-                    {completedLevels.has(3) && <span style={{ color: '#10b981' }}>✓</span>}
-                    {!completedLevels.has(2) && <span style={{ color: '#6b7280' }}>🔒</span>}
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (completedLevels.has(3)) {
-                        setChallengeLevel(4)
-                      }
-                    }}
-                    disabled={!completedLevels.has(3)}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      borderRadius: '6px',
-                      border: '2px solid #e5e7eb',
-                      backgroundColor: challengeLevel === 4 ? '#4f46e5' : (!completedLevels.has(3) ? '#f3f4f6' : '#f9fafb'),
-                      color: challengeLevel === 4 ? 'white' : (!completedLevels.has(3) ? '#9ca3af' : '#374151'),
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      cursor: !completedLevels.has(3) ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
-                      textAlign: 'left',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between'
-                    }}
-                  >
-                    <span>Level 4</span>
-                    {completedLevels.has(4) && <span style={{ color: '#10b981' }}>✓</span>}
-                    {!completedLevels.has(3) && <span style={{ color: '#6b7280' }}>🔒</span>}
-                  </button>
-                </div>
-              </div>
+              <Card sx={{ mb: 2 }}>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    Challenge Level
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {[1, 2, 3, 4].map((level) => (
+                      <Button
+                        key={level}
+                        variant={challengeLevel === level ? "contained" : "outlined"}
+                        onClick={() => {
+                          if (level === 1 || completedLevels.has(level - 1)) {
+                            setChallengeLevel(level)
+                          }
+                        }}
+                        disabled={level > 1 && !completedLevels.has(level - 1)}
+                        sx={{ 
+                          justifyContent: 'space-between',
+                          textTransform: 'none'
+                        }}
+                        endIcon={
+                          <span>
+                            {completedLevels.has(level) && '✓'}
+                            {level > 1 && !completedLevels.has(level - 1) && '🔒'}
+                          </span>
+                        }
+                      >
+                        Level {level}
+                      </Button>
+                    ))}
+                  </Box>
+                </CardContent>
+              </Card>
             )}
             
             {gameMode === 'vs-computer' && (
-              <div style={{
-                padding: '1rem',
-                backgroundColor: 'white',
-                borderRadius: '8px',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                margin: '1rem 0'
-              }}>
-                <label style={{
-                  fontSize: '1rem',
-                  fontWeight: '500',
-                  color: '#374151',
-                  marginBottom: '0.5rem',
-                  display: 'block'
-                }}>
-                  Win Criteria:
-                </label>
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.5rem'
-                }}>
-                  <button
-                    onClick={() => setWinCriteria('capture1')}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      borderRadius: '6px',
-                      border: '2px solid #e5e7eb',
-                      backgroundColor: winCriteria === 'capture1' ? '#4f46e5' : '#f9fafb',
-                      color: winCriteria === 'capture1' ? 'white' : '#374151',
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      textAlign: 'left'
-                    }}
-                  >
-                    Capture 1 Stone
-                  </button>
-                  <button
-                    onClick={() => setWinCriteria('capture3')}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      borderRadius: '6px',
-                      border: '2px solid #e5e7eb',
-                      backgroundColor: winCriteria === 'capture3' ? '#4f46e5' : '#f9fafb',
-                      color: winCriteria === 'capture3' ? 'white' : '#374151',
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      textAlign: 'left'
-                    }}
-                  >
-                    Capture 3 Stones
-                  </button>
-                  <button
-                    onClick={() => setWinCriteria('territory')}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      borderRadius: '6px',
-                      border: '2px solid #e5e7eb',
-                      backgroundColor: winCriteria === 'territory' ? '#4f46e5' : '#f9fafb',
-                      color: winCriteria === 'territory' ? 'white' : '#374151',
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      textAlign: 'left'
-                    }}
-                  >
-                    Territory + Captures
-                  </button>
-                </div>
-              </div>
+              <Card sx={{ mb: 2 }}>
+                <CardContent>
+                  <FormControl component="fieldset">
+                    <FormLabel component="legend">Win Criteria</FormLabel>
+                    <RadioGroup
+                      value={winCriteria}
+                      onChange={(e) => setWinCriteria(e.target.value)}
+                    >
+                      <FormControlLabel value="capture1" control={<Radio />} label="Capture 1 Stone" />
+                      <FormControlLabel value="capture3" control={<Radio />} label="Capture 3 Stones" />
+                      <FormControlLabel value="territory" control={<Radio />} label="Territory + Captures" />
+                    </RadioGroup>
+                  </FormControl>
+                </CardContent>
+              </Card>
             )}
             
             {gameMode === 'explore' && (
@@ -421,320 +245,102 @@ function App() {
             )}
             
             {gameMode === 'vs-computer' && (
-              <div style={{
-                padding: '1rem',
-                backgroundColor: 'white',
-                borderRadius: '8px',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                margin: '1rem 0'
-              }}>
-                <div style={{
-                  fontSize: '1rem',
-                  fontWeight: '500',
-                  color: '#374151',
-                  marginBottom: '0.5rem',
-                  textAlign: 'center'
-                }}>
-                  You are Blue
-                </div>
-                <div style={{
-                  fontSize: '0.875rem',
-                  color: '#6b7280',
-                  textAlign: 'center',
-                  marginBottom: '1rem'
-                }}>
-                  Computer plays Red
-                </div>
-                
-                <div style={{
-                  marginBottom: '0.5rem'
-                }}>
-                  <label style={{
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#374151',
-                    marginBottom: '0.5rem',
-                    display: 'block'
-                  }}>
-                    AI Mode:
-                  </label>
-                  <div style={{
-                    display: 'flex',
-                    gap: '0.5rem',
-                    flexWrap: 'wrap'
-                  }}>
-                    <button
-                      onClick={() => setAiMode('random')}
-                      style={{
-                        flex: '1 1 45%',
-                        padding: '0.4rem 0.6rem',
-                        borderRadius: '4px',
-                        border: '1px solid #e5e7eb',
-                        backgroundColor: aiMode === 'random' ? '#3b82f6' : '#f9fafb',
-                        color: aiMode === 'random' ? 'white' : '#374151',
-                        fontSize: '0.7rem',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
+              <Card sx={{ mb: 2 }}>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom align="center">
+                    You are Blue
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" align="center" gutterBottom>
+                    Computer plays Red
+                  </Typography>
+                  <Divider sx={{ my: 2 }} />
+                  <FormControl component="fieldset">
+                    <FormLabel component="legend">AI Mode</FormLabel>
+                    <RadioGroup
+                      value={aiMode}
+                      onChange={(e) => setAiMode(e.target.value)}
+                      row
                     >
-                      Random
-                    </button>
-                    <button
-                      onClick={() => setAiMode('attack')}
-                      style={{
-                        flex: '1 1 45%',
-                        padding: '0.4rem 0.6rem',
-                        borderRadius: '4px',
-                        border: '1px solid #e5e7eb',
-                        backgroundColor: aiMode === 'attack' ? '#3b82f6' : '#f9fafb',
-                        color: aiMode === 'attack' ? 'white' : '#374151',
-                        fontSize: '0.7rem',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      Attack
-                    </button>
-                    <button
-                      onClick={() => setAiMode('greedy')}
-                      style={{
-                        flex: '1 1 45%',
-                        padding: '0.4rem 0.6rem',
-                        borderRadius: '4px',
-                        border: '1px solid #e5e7eb',
-                        backgroundColor: aiMode === 'greedy' ? '#3b82f6' : '#f9fafb',
-                        color: aiMode === 'greedy' ? 'white' : '#374151',
-                        fontSize: '0.7rem',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      Greedy
-                    </button>
-                    <button
-                      onClick={() => setAiMode('advanced')}
-                      style={{
-                        flex: '1 1 45%',
-                        padding: '0.4rem 0.6rem',
-                        borderRadius: '4px',
-                        border: '1px solid #e5e7eb',
-                        backgroundColor: aiMode === 'advanced' ? '#3b82f6' : '#f9fafb',
-                        color: aiMode === 'advanced' ? 'white' : '#374151',
-                        fontSize: '0.7rem',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      Advanced
-                    </button>
-                  </div>
-                </div>
-              </div>
+                      <FormControlLabel value="random" control={<Radio />} label="Random" />
+                      <FormControlLabel value="attack" control={<Radio />} label="Attack" />
+                      <FormControlLabel value="greedy" control={<Radio />} label="Greedy" />
+                      <FormControlLabel value="advanced" control={<Radio />} label="Advanced" />
+                    </RadioGroup>
+                  </FormControl>
+                </CardContent>
+              </Card>
             )}
             
             
 
-            <div style={{
-              padding: '1rem',
-              backgroundColor: 'white',
-              borderRadius: '8px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-              margin: '1rem 0'
-            }}>
-              <button
-                onClick={() => setShowTerritoryScore(!showTerritoryScore)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  backgroundColor: '#4f46e5',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '1rem',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  marginBottom: showTerritoryScore ? '1rem' : '0',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = '#3730a3'
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = '#4f46e5'
-                }}
-              >
-                {showTerritoryScore ? 'Hide Territory Score' : 'Calculate Territory Score'}
-              </button>
-              
-              {showTerritoryScore && (
-                <div>
-                  <div style={{
-                    textAlign: 'center',
-                    color: '#60a5fa',
-                    fontWeight: '500',
-                    marginBottom: '0.5rem'
-                  }}>
-                    Blue Territory: {territoryScore.blue}
-                  </div>
-                  <div style={{
-                    textAlign: 'center',
-                    color: '#e11d48',
-                    fontWeight: '500',
-                    marginBottom: '0.5rem'
-                  }}>
-                    Red Territory: {territoryScore.red}
-                  </div>
-                  <div style={{
-                    textAlign: 'center',
-                    color: '#6b7280',
-                    fontWeight: '500',
-                    marginBottom: '0.5rem'
-                  }}>
-                    Neutral: {territoryScore.neutral}
-                  </div>
-                  <hr style={{ margin: '0.5rem 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
-                  <div style={{
-                    textAlign: 'center',
-                    fontWeight: '600',
-                    color: '#374151'
-                  }}>
-                    Final Score: Blue {territoryScore.blue + captureCount.blue} - Red {territoryScore.red + captureCount.red}
-                  </div>
-                </div>
-              )}
-            </div>
+            <Card sx={{ mb: 2 }}>
+              <CardContent>
+                <Button
+                  variant="contained"
+                  fullWidth
+                  onClick={() => setShowTerritoryScore(!showTerritoryScore)}
+                  sx={{ mb: showTerritoryScore ? 2 : 0 }}
+                >
+                  {showTerritoryScore ? 'Hide Territory Score' : 'Calculate Territory Score'}
+                </Button>
+                
+                {showTerritoryScore && (
+                  <Box>
+                    <Typography align="center" color="primary" sx={{ fontWeight: 500, mb: 1 }}>
+                      Blue Territory: {territoryScore.blue}
+                    </Typography>
+                    <Typography align="center" color="error" sx={{ fontWeight: 500, mb: 1 }}>
+                      Red Territory: {territoryScore.red}
+                    </Typography>
+                    <Typography align="center" color="text.secondary" sx={{ fontWeight: 500, mb: 1 }}>
+                      Neutral: {territoryScore.neutral}
+                    </Typography>
+                    <Divider sx={{ my: 1 }} />
+                    <Typography align="center" sx={{ fontWeight: 600 }}>
+                      Final Score: Blue {territoryScore.blue + captureCount.blue} - Red {territoryScore.red + captureCount.red}
+                    </Typography>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
             
-            <div style={{
-              padding: '1rem',
-              backgroundColor: 'white',
-              borderRadius: '8px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-              margin: '1rem 0'
-            }}>
-              <button
+            <Accordion sx={{ mb: 2 }}>
+              <AccordionSummary
+                expandIcon={<ExpandMoreIcon />}
                 onClick={() => setDebugDrawerOpen(!debugDrawerOpen)}
-                style={{
-                  width: '100%',
-                  padding: '0.5rem 1rem',
-                  borderRadius: '6px',
-                  border: '2px solid #e5e7eb',
-                  backgroundColor: debugDrawerOpen ? '#6b7280' : '#f9fafb',
-                  color: debugDrawerOpen ? 'white' : '#374151',
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}
-                onMouseEnter={(e) => {
-                  if (!debugDrawerOpen) {
-                    e.target.style.backgroundColor = '#f3f4f6'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!debugDrawerOpen) {
-                    e.target.style.backgroundColor = '#f9fafb'
-                  }
-                }}
               >
-                <span>Debug Mode</span>
-                <span style={{
-                  transform: debugDrawerOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                  transition: 'transform 0.2s ease'
-                }}>
-                  ▼
-                </span>
-              </button>
-              
-              {debugDrawerOpen && (
-                <div style={{
-                  marginTop: '1rem',
-                  padding: '1rem',
-                  backgroundColor: '#f9fafb',
-                  borderRadius: '6px',
-                  border: '1px solid #e5e7eb'
-                }}>
-                  <button
-                    onClick={() => setShowNodeNumbers(!showNodeNumbers)}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem 1rem',
-                      borderRadius: '6px',
-                      border: '2px solid #e5e7eb',
-                      backgroundColor: showNodeNumbers ? '#4f46e5' : '#ffffff',
-                      color: showNodeNumbers ? 'white' : '#374151',
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!showNodeNumbers) {
-                        e.target.style.backgroundColor = '#f3f4f6'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!showNodeNumbers) {
-                        e.target.style.backgroundColor = '#ffffff'
-                      }
-                    }}
-                  >
-                    {showNodeNumbers ? 'Hide Node Numbers' : 'Show Node Numbers'}
-                  </button>
-                  
-                  <div style={{
-                    fontSize: '0.875rem',
-                    color: '#6b7280',
-                    marginTop: '0.5rem',
-                    marginBottom: '1rem'
-                  }}>
+                <Typography>Debug Mode</Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <FormGroup>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={showNodeNumbers}
+                        onChange={(e) => setShowNodeNumbers(e.target.checked)}
+                      />
+                    }
+                    label="Show Node Numbers"
+                  />
+                  <Typography variant="caption" color="text.secondary" sx={{ ml: 4, mb: 2 }}>
                     {showNodeNumbers ? 'Node indices visible' : 'Shows node indices for debugging'}
-                  </div>
+                  </Typography>
                   
-                  <button
-                    onClick={() => setShowEdgeNumbers(!showEdgeNumbers)}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem 1rem',
-                      borderRadius: '6px',
-                      border: '2px solid #e5e7eb',
-                      backgroundColor: showEdgeNumbers ? '#4f46e5' : '#ffffff',
-                      color: showEdgeNumbers ? 'white' : '#374151',
-                      fontSize: '0.875rem',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!showEdgeNumbers) {
-                        e.target.style.backgroundColor = '#f3f4f6'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!showEdgeNumbers) {
-                        e.target.style.backgroundColor = '#ffffff'
-                      }
-                    }}
-                  >
-                    {showEdgeNumbers ? 'Hide Edge Numbers' : 'Show Edge Numbers'}
-                  </button>
-                  
-                  <div style={{
-                    fontSize: '0.875rem',
-                    color: '#6b7280',
-                    marginTop: '0.5rem'
-                  }}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={showEdgeNumbers}
+                        onChange={(e) => setShowEdgeNumbers(e.target.checked)}
+                      />
+                    }
+                    label="Show Edge Numbers"
+                  />
+                  <Typography variant="caption" color="text.secondary" sx={{ ml: 4 }}>
                     {showEdgeNumbers ? 'Edge indices visible' : 'Shows edge indices for debugging'}
-                  </div>
-                </div>
-              )}
-            </div>
+                  </Typography>
+                </FormGroup>
+              </AccordionDetails>
+            </Accordion>
           </div>
           
           <div style={{
@@ -862,122 +468,62 @@ function App() {
       </div>
       
       {/* Info Modal */}
-      {showHelp && (
-        <div 
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.75)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            backdropFilter: 'blur(4px)'
-          }}
-          onClick={() => setShowHelp(false)}
-        >
-          <div 
-            style={{
-              backgroundColor: 'white',
-              padding: '2.5rem',
-              borderRadius: '16px',
-              maxWidth: '600px',
-              maxHeight: '85vh',
-              overflowY: 'auto',
-              boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1)',
-              border: '1px solid #e5e7eb',
-              position: 'relative',
-              margin: '1rem',
-              transform: 'scale(1)',
-              transition: 'all 0.3s ease'
+      <Dialog
+        open={showHelp}
+        onClose={() => setShowHelp(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            maxHeight: '85vh'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          textAlign: 'center',
+          position: 'relative'
+        }}>
+          <Typography variant="h4" component="h1">
+            3D Go
+          </Typography>
+          <IconButton
+            onClick={() => setShowHelp(false)}
+            sx={{ 
+              position: 'absolute',
+              right: 8,
+              top: 8,
+              color: 'white'
             }}
-            onClick={(e) => e.stopPropagation()}
           >
-            <button
-              onClick={() => setShowHelp(false)}
-              style={{
-                position: 'absolute',
-                top: '1rem',
-                right: '1rem',
-                width: '2rem',
-                height: '2rem',
-                backgroundColor: '#f9fafb',
-                color: '#6b7280',
-                border: '1px solid #e5e7eb',
-                borderRadius: '50%',
-                cursor: 'pointer',
-                fontSize: '1rem',
-                fontWeight: 'bold',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = '#f3f4f6'
-                e.target.style.borderColor = '#d1d5db'
-                e.target.style.color = '#374151'
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = '#f9fafb'
-                e.target.style.borderColor = '#e5e7eb'
-                e.target.style.color = '#6b7280'
-              }}
-            >
-              ×
-            </button>
-            
-            <div style={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              borderRadius: '12px',
-              padding: '1.5rem',
-              marginBottom: '2rem',
-              color: 'white',
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <div 
+            dangerouslySetInnerHTML={{ 
+              __html: markdownToHtml(helpContent) 
+            }}
+          />
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              mt: 3, 
+              p: 2, 
+              bgcolor: 'grey.50', 
+              borderRadius: 1, 
+              display: 'block',
               textAlign: 'center'
-            }}>
-              <h1 style={{
-                fontSize: '1.75rem',
-                fontWeight: 'bold',
-                margin: 0
-              }}>
-                3D Go
-              </h1>
-            </div>
-            
-            <div 
-              style={{
-                color: '#374151',
-                lineHeight: '1.7',
-                fontSize: '0.95rem'
-              }}
-              dangerouslySetInnerHTML={{ 
-                __html: markdownToHtml(helpContent) 
-              }}
-            />
-            
-            <div style={{
-              marginTop: '2rem',
-              padding: '1rem',
-              backgroundColor: '#f8fafc',
-              borderRadius: '8px',
-              border: '1px solid #e2e8f0',
-              textAlign: 'center'
-            }}>
-              <p style={{
-                fontSize: '0.875rem',
-                color: '#64748b',
-                margin: 0
-              }}>
-                Click anywhere outside this window or press the × button to close
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+            }}
+          >
+            Click anywhere outside this window or press the × button to close
+          </Typography>
+        </DialogContent>
+      </Dialog>
     </div>
+    </ThemeProvider>
   )
 }
 
