@@ -38,7 +38,6 @@ The tetrahedral lattice topology is particularly interesting because it preserve
 
 ### Prerequisites
 - Node.js (version 14 or higher)
-- npm or nvm for package management
 
 ### Installation & Setup
 
@@ -148,7 +147,6 @@ This project is open source. Feel free to explore, modify, and share!
 ## 🔗 Links
 
 - [GitHub Repository](https://github.com/lukas/go-game)
-- [Play Online](https://your-deployment-url.com) <!-- Update with actual deployment URL -->
 
 ---
 
