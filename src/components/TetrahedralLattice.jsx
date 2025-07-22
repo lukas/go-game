@@ -1393,7 +1393,7 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
   // Get scale for hover effect
   const getNodeScale = (nodeIndex) => {
     const hasStone = nodeColors[nodeIndex] // Check if node has a stone (blue or red)
-    const baseScale = hasStone ? 1.0 : 0.6 // Empty nodes are smaller
+    const baseScale = hasStone ? 1.0 : 0.5 // Empty nodes are half size
     
     if (hoveredNode === nodeIndex) return baseScale * 1.3
     if (hoveredGroup.has(nodeIndex)) return baseScale * 1.2

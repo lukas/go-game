@@ -468,7 +468,7 @@ function App() {
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
+        <DialogContent sx={{ pt: 3, bgcolor: '#1f2937', color: '#f9fafb' }}>
           <div 
             dangerouslySetInnerHTML={{ 
               __html: markdownToHtml(helpContent) 
@@ -479,10 +479,11 @@ function App() {
             sx={{ 
               mt: 3, 
               p: 2, 
-              bgcolor: 'grey.50', 
+              bgcolor: '#374151', 
               borderRadius: 1, 
               display: 'block',
-              textAlign: 'center'
+              textAlign: 'center',
+              color: '#d1d5db'
             }}
           >
             Click anywhere outside this window or press the × button to close
