@@ -6,6 +6,7 @@ import {
   Dialog, 
   DialogTitle, 
   DialogContent, 
+  DialogActions,
   IconButton, 
   Typography,
   Card,
@@ -60,7 +61,7 @@ function App() {
   const [winCriteria, setWinCriteria] = useState('territory') // 'capture1', 'capture3', 'territory'
   const [challengeLevel, setChallengeLevel] = useState(1) // 1, 2, or 3
   const [completedLevels, setCompletedLevels] = useState(new Set()) // Track completed levels
-  const [showHelp, setShowHelp] = useState(false) // Show help modal
+  const [showHelp, setShowHelp] = useState(true) // Show help modal
   const [helpContent, setHelpContent] = useState('') // Store help content from markdown file
   const [showNodeNumbers, setShowNodeNumbers] = useState(false)
   const [showEdgeNumbers, setShowEdgeNumbers] = useState(false)
@@ -76,24 +77,24 @@ function App() {
   // Simple markdown to HTML converter
   const markdownToHtml = (markdown) => {
     return markdown
-      .replace(/^# (.*$)/gm, '<h1 style="font-size: 1.5rem; font-weight: bold; color: #374151; margin: 0 0 1.5rem 0;">$1</h1>')
-      .replace(/^## (.*$)/gm, '<h2 style="font-size: 1.1rem; font-weight: 600; margin: 1rem 0 0.5rem 0; color: #1f2937;">$1</h2>')
-      .replace(/^\*\*(.+)\*\*$/gm, '<strong>$1</strong>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/^- (.*$)/gm, '<li style="margin-bottom: 0.25rem;">$1</li>')
-      .replace(/^💡 \*\*Tip:\*\* (.*)$/gm, '<div style="background-color: #f9fafb; padding: 1rem; border-radius: 6px; border: 1px solid #e5e7eb; margin-top: 1rem;"><p style="font-size: 0.85rem; color: #6b7280; margin: 0; font-style: italic;">💡 <strong>Tip:</strong> $1</p></div>')
-      .replace(/^---$/gm, '<hr style="margin: 1rem 0; border: none; border-top: 1px solid #e5e7eb;">')
-      .replace(/\n\n/g, '</p><p style="margin-bottom: 1rem;">')
-      .replace(/^(?!<[hlu]|<div|<hr)(.+)$/gm, '<p style="margin-bottom: 1rem;">$1</p>')
+      .replace(/^# (.*$)/gm, '<h1 style="font-size: 1.8rem; font-weight: bold; color: #f9fafb; margin: 0 0 1.5rem 0;">$1</h1>')
+      .replace(/^## (.*$)/gm, '<h2 style="font-size: 1.3rem; font-weight: 600; margin: 1.5rem 0 0.8rem 0; color: #e5e7eb;">$1</h2>')
+      .replace(/^\*\*(.+)\*\*$/gm, '<strong style="color: #f9fafb;">$1</strong>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong style="color: #f9fafb;">$1</strong>')
+      .replace(/^- (.*$)/gm, '<li style="margin-bottom: 0.4rem; color: #d1d5db;">$1</li>')
+      .replace(/^💡 \*\*Tip:\*\* (.*)$/gm, '<div style="background-color: #374151; padding: 1rem; border-radius: 8px; border-left: 4px solid #60a5fa; margin: 1rem 0;"><p style="font-size: 0.9rem; color: #e5e7eb; margin: 0;"><span style="color: #60a5fa;">💡 <strong>Tip:</strong></span> $1</p></div>')
+      .replace(/^---$/gm, '<hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #4b5563;">')
+      .replace(/\n\n/g, '</p><p style="margin-bottom: 1rem; color: #d1d5db; line-height: 1.6;">')
+      .replace(/^(?!<[hlu]|<div|<hr)(.+)$/gm, '<p style="margin-bottom: 1rem; color: #d1d5db; line-height: 1.6;">$1</p>')
       .replace(/<li[^>]*>([^<]*)<\/li>/g, (match, content) => {
         if (content.includes('</p>')) {
-          return `<li style="margin-bottom: 0.25rem;">${content.replace(/<\/?p[^>]*>/g, '')}</li>`
+          return `<li style="margin-bottom: 0.4rem; color: #d1d5db;">${content.replace(/<\/?p[^>]*>/g, '')}</li>`
         }
         return match
       })
       // Wrap consecutive <li> elements in <ul>
       .replace(/(<li[^>]*>.*?<\/li>\s*)+/g, (match) => {
-        return `<ul style="margin-bottom: 1rem; padding-left: 1.5rem;">${match}</ul>`
+        return `<ul style="margin-bottom: 1.5rem; padding-left: 1.5rem; list-style-type: disc;">${match}</ul>`
       })
   }
 
@@ -437,13 +438,15 @@ function App() {
       {/* Info Modal */}
       <Dialog
         open={showHelp}
-        onClose={() => setShowHelp(false)}
         maxWidth="md"
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: 2,
-            maxHeight: '85vh'
+            borderRadius: 3,
+            maxHeight: '90vh',
+            bgcolor: '#111827',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)',
+            border: '1px solid #374151'
           }
         }}
       >
@@ -451,44 +454,75 @@ function App() {
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           color: 'white',
           textAlign: 'center',
-          position: 'relative'
+          py: 4,
+          borderRadius: '12px 12px 0 0'
         }}>
-          <Typography variant="h4" component="h1">
+          <Typography variant="h3" component="h1" sx={{ 
+            fontWeight: 700,
+            letterSpacing: '0.02em',
+            textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+          }}>
             3D Go
           </Typography>
-          <IconButton
-            onClick={() => setShowHelp(false)}
-            sx={{ 
-              position: 'absolute',
-              right: 8,
-              top: 8,
-              color: 'white'
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ pt: 3, bgcolor: '#1f2937', color: '#f9fafb' }}>
+        <DialogContent sx={{ 
+          pt: 4, 
+          px: 4, 
+          pb: 2,
+          bgcolor: '#111827', 
+          color: '#f9fafb',
+          '&::-webkit-scrollbar': {
+            width: '8px',
+          },
+          '&::-webkit-scrollbar-track': {
+            bgcolor: '#374151',
+            borderRadius: '4px',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            bgcolor: '#60a5fa',
+            borderRadius: '4px',
+            '&:hover': {
+              bgcolor: '#3b82f6',
+            },
+          },
+        }}>
           <div 
             dangerouslySetInnerHTML={{ 
               __html: markdownToHtml(helpContent) 
             }}
           />
-          <Typography 
-            variant="caption" 
-            sx={{ 
-              mt: 3, 
-              p: 2, 
-              bgcolor: '#374151', 
-              borderRadius: 1, 
-              display: 'block',
-              textAlign: 'center',
-              color: '#d1d5db'
+        </DialogContent>
+        <DialogActions sx={{ 
+          bgcolor: '#111827', 
+          p: 4,
+          justifyContent: 'center',
+          borderTop: '1px solid #374151'
+        }}>
+          <Button 
+            onClick={() => setShowHelp(false)}
+            variant="contained"
+            size="large"
+            sx={{
+              bgcolor: '#667eea',
+              color: 'white',
+              fontWeight: 600,
+              fontSize: '1.1rem',
+              px: 6,
+              py: 1.5,
+              borderRadius: 2,
+              textTransform: 'none',
+              boxShadow: '0 4px 14px 0 rgba(102, 126, 234, 0.4)',
+              '&:hover': {
+                bgcolor: '#5a67d8',
+                boxShadow: '0 6px 20px 0 rgba(102, 126, 234, 0.6)',
+                transform: 'translateY(-1px)'
+              },
+              transition: 'all 0.2s ease-in-out'
             }}
           >
-            Click anywhere outside this window or press the × button to close
-          </Typography>
-        </DialogContent>
+            Got it!
+          </Button>
+        </DialogActions>
       </Dialog>
     </div>
     </ThemeProvider>
