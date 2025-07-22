@@ -45,22 +45,15 @@ The tetrahedral lattice topology is particularly interesting because it preserve
 1. **Clone the repository**
    ```bash
    git clone https://github.com/lukas/go-game.git
-   cd go-game/philadelphia
+   cd go-game
    ```
 
-2. **Install dependencies**
+2. **Start the game**
    ```bash
-   npm install
-   ```
-
-3. **Start the development server**
-   ```bash
-   npm start
-   # or
    ./start.sh
    ```
 
-   The automated start script will check dependencies and launch the development server at `http://localhost:5173`
+   The start script will automatically install dependencies and launch the development server at `http://localhost:5173`
 
 ### Alternative Commands
 
