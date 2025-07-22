@@ -1,6 +1,7 @@
 # Claude Development Guide
 
 ## Setup Instructions
+test
 
 Use node to create a local web app
 Use nvm to create your own node version
