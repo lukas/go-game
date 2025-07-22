@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import TetrahedralLattice from './components/TetrahedralLattice'
 import SizeSlider from './components/SizeSlider'
 import ColorPicker from './components/ColorPicker'
@@ -15,9 +15,42 @@ function App() {
   const [challengeLevel, setChallengeLevel] = useState(1) // 1, 2, or 3
   const [completedLevels, setCompletedLevels] = useState(new Set()) // Track completed levels
   const [showHelp, setShowHelp] = useState(false) // Show help modal
+  const [helpContent, setHelpContent] = useState('') // Store help content from markdown file
   const [showNodeNumbers, setShowNodeNumbers] = useState(false)
   const [showEdgeNumbers, setShowEdgeNumbers] = useState(false)
   const [debugDrawerOpen, setDebugDrawerOpen] = useState(false)
+
+  // Load help content from markdown file
+  useEffect(() => {
+    fetch('/help.md')
+      .then(response => response.text())
+      .then(text => setHelpContent(text))
+      .catch(error => console.error('Error loading help content:', error))
+  }, [])
+
+  // Simple markdown to HTML converter
+  const markdownToHtml = (markdown) => {
+    return markdown
+      .replace(/^# (.*$)/gm, '<h1 style="font-size: 1.5rem; font-weight: bold; color: #374151; margin: 0 0 1.5rem 0;">$1</h1>')
+      .replace(/^## (.*$)/gm, '<h2 style="font-size: 1.1rem; font-weight: 600; margin: 1rem 0 0.5rem 0; color: #1f2937;">$1</h2>')
+      .replace(/^\*\*(.+)\*\*$/gm, '<strong>$1</strong>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/^- (.*$)/gm, '<li style="margin-bottom: 0.25rem;">$1</li>')
+      .replace(/^💡 \*\*Tip:\*\* (.*)$/gm, '<div style="background-color: #f9fafb; padding: 1rem; border-radius: 6px; border: 1px solid #e5e7eb; margin-top: 1rem;"><p style="font-size: 0.85rem; color: #6b7280; margin: 0; font-style: italic;">💡 <strong>Tip:</strong> $1</p></div>')
+      .replace(/^---$/gm, '<hr style="margin: 1rem 0; border: none; border-top: 1px solid #e5e7eb;">')
+      .replace(/\n\n/g, '</p><p style="margin-bottom: 1rem;">')
+      .replace(/^(?!<[hlu]|<div|<hr)(.+)$/gm, '<p style="margin-bottom: 1rem;">$1</p>')
+      .replace(/<li[^>]*>([^<]*)<\/li>/g, (match, content) => {
+        if (content.includes('</p>')) {
+          return `<li style="margin-bottom: 0.25rem;">${content.replace(/<\/?p[^>]*>/g, '')}</li>`
+        }
+        return match
+      })
+      // Wrap consecutive <li> elements in <ul>
+      .replace(/(<li[^>]*>.*?<\/li>\s*)+/g, (match) => {
+        return `<ul style="margin-bottom: 1rem; padding-left: 1.5rem;">${match}</ul>`
+      })
+  }
 
   return (
     <div style={{
@@ -30,13 +63,45 @@ function App() {
         maxWidth: '1200px',
         margin: '0 auto'
       }}>
-        <h1 style={{ 
-          color: '#333', 
-          textAlign: 'center',
-          marginBottom: '2rem'
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: '2rem',
+          position: 'relative'
         }}>
-          3D Go
-        </h1>
+          <h1 style={{ 
+            color: '#333', 
+            textAlign: 'center',
+            margin: 0
+          }}>
+            3D Go
+          </h1>
+          <button
+            onClick={() => setShowHelp(true)}
+            style={{
+              position: 'absolute',
+              right: 0,
+              padding: '0.5rem 1rem',
+              backgroundColor: '#6b7280',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = '#4b5563'
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = '#6b7280'
+            }}
+          >
+            Info
+          </button>
+        </div>
         
         <div style={{
           display: 'flex',
@@ -151,42 +216,15 @@ function App() {
                 boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
                 margin: '1rem 0'
               }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '0.5rem'
+                <label style={{
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '0.5rem',
+                  display: 'block'
                 }}>
-                  <label style={{
-                    fontSize: '1rem',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    Challenge Level:
-                  </label>
-                  <button
-                    onClick={() => setShowHelp(true)}
-                    style={{
-                      padding: '0.25rem 0.5rem',
-                      backgroundColor: '#6b7280',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      fontSize: '0.75rem',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.backgroundColor = '#4b5563'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.backgroundColor = '#6b7280'
-                    }}
-                  >
-                    Help
-                  </button>
-                </div>
+                  Challenge Level:
+                </label>
                 <div style={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -266,6 +304,33 @@ function App() {
                     <span>Level 3</span>
                     {completedLevels.has(3) && <span style={{ color: '#10b981' }}>✓</span>}
                     {!completedLevels.has(2) && <span style={{ color: '#6b7280' }}>🔒</span>}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (completedLevels.has(3)) {
+                        setChallengeLevel(4)
+                      }
+                    }}
+                    disabled={!completedLevels.has(3)}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      borderRadius: '6px',
+                      border: '2px solid #e5e7eb',
+                      backgroundColor: challengeLevel === 4 ? '#4f46e5' : (!completedLevels.has(3) ? '#f3f4f6' : '#f9fafb'),
+                      color: challengeLevel === 4 ? 'white' : (!completedLevels.has(3) ? '#9ca3af' : '#374151'),
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      cursor: !completedLevels.has(3) ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease',
+                      textAlign: 'left',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}
+                  >
+                    <span>Level 4</span>
+                    {completedLevels.has(4) && <span style={{ color: '#10b981' }}>✓</span>}
+                    {!completedLevels.has(3) && <span style={{ color: '#6b7280' }}>🔒</span>}
                   </button>
                 </div>
               </div>
@@ -680,7 +745,7 @@ function App() {
             overflow: 'hidden'
           }}>
             <TetrahedralLattice 
-              size={gameMode === 'challenge' ? (challengeLevel === 1 ? 3 : 4) : latticeSize} 
+              size={gameMode === 'challenge' ? (challengeLevel === 1 ? 3 : challengeLevel === 4 ? 5 : 4) : latticeSize} 
               selectedColor={selectedColor} 
               captureCount={captureCount}
               setCaptureCount={setCaptureCount}
@@ -689,11 +754,12 @@ function App() {
               showTerritoryScore={showTerritoryScore}
               setShowTerritoryScore={setShowTerritoryScore}
               gameMode={gameMode}
-              aiMode={gameMode === 'challenge' ? (challengeLevel === 1 ? 'random' : challengeLevel === 2 ? 'attack' : 'greedy') : aiMode}
+              aiMode={gameMode === 'challenge' ? (challengeLevel === 1 ? 'random' : challengeLevel === 2 ? 'attack' : challengeLevel === 3 ? 'greedy' : 'advanced') : aiMode}
               winCriteria={winCriteria}
               showNodeNumbers={showNodeNumbers}
               showEdgeNumbers={showEdgeNumbers}
               challengeLevel={challengeLevel}
+              setChallengeLevel={setChallengeLevel}
               completedLevels={completedLevels}
               setCompletedLevels={setCompletedLevels}
             />
@@ -795,145 +861,118 @@ function App() {
         </div>
       </div>
       
-      {/* Help Modal */}
+      {/* Info Modal */}
       {showHelp && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '2rem',
-            borderRadius: '12px',
-            maxWidth: '500px',
-            maxHeight: '80vh',
-            overflowY: 'auto',
-            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1.5rem'
-            }}>
-              <h2 style={{
-                fontSize: '1.5rem',
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(4px)'
+          }}
+          onClick={() => setShowHelp(false)}
+        >
+          <div 
+            style={{
+              backgroundColor: 'white',
+              padding: '2.5rem',
+              borderRadius: '16px',
+              maxWidth: '600px',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+              border: '1px solid #e5e7eb',
+              position: 'relative',
+              margin: '1rem',
+              transform: 'scale(1)',
+              transition: 'all 0.3s ease'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowHelp(false)}
+              style={{
+                position: 'absolute',
+                top: '1rem',
+                right: '1rem',
+                width: '2rem',
+                height: '2rem',
+                backgroundColor: '#f9fafb',
+                color: '#6b7280',
+                border: '1px solid #e5e7eb',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                fontSize: '1rem',
                 fontWeight: 'bold',
-                color: '#374151',
-                margin: 0
-              }}>
-                3D Go - Challenge Mode
-              </h2>
-              <button
-                onClick={() => setShowHelp(false)}
-                style={{
-                  padding: '0.5rem',
-                  backgroundColor: '#f3f4f6',
-                  color: '#6b7280',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '1.2rem',
-                  fontWeight: 'bold',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = '#e5e7eb'
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = '#f3f4f6'
-                }}
-              >
-                ×
-              </button>
-            </div>
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = '#f3f4f6'
+                e.target.style.borderColor = '#d1d5db'
+                e.target.style.color = '#374151'
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = '#f9fafb'
+                e.target.style.borderColor = '#e5e7eb'
+                e.target.style.color = '#6b7280'
+              }}
+            >
+              ×
+            </button>
             
             <div style={{
-              color: '#374151',
-              lineHeight: '1.6',
-              fontSize: '0.9rem'
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              borderRadius: '12px',
+              padding: '1.5rem',
+              marginBottom: '2rem',
+              color: 'white',
+              textAlign: 'center'
             }}>
-              <h3 style={{
-                fontSize: '1.1rem',
-                fontWeight: '600',
-                marginBottom: '0.5rem',
-                color: '#1f2937'
+              <h1 style={{
+                fontSize: '1.75rem',
+                fontWeight: 'bold',
+                margin: 0
               }}>
-                How to Play:
-              </h3>
-              <p style={{ marginBottom: '1rem' }}>
-                This is a 3D variant of the classic game Go. Instead of a flat board, 
-                stones are placed on a three-dimensional tetrahedral lattice structure.
+                3D Go
+              </h1>
+            </div>
+            
+            <div 
+              style={{
+                color: '#374151',
+                lineHeight: '1.7',
+                fontSize: '0.95rem'
+              }}
+              dangerouslySetInnerHTML={{ 
+                __html: markdownToHtml(helpContent) 
+              }}
+            />
+            
+            <div style={{
+              marginTop: '2rem',
+              padding: '1rem',
+              backgroundColor: '#f8fafc',
+              borderRadius: '8px',
+              border: '1px solid #e2e8f0',
+              textAlign: 'center'
+            }}>
+              <p style={{
+                fontSize: '0.875rem',
+                color: '#64748b',
+                margin: 0
+              }}>
+                Click anywhere outside this window or press the × button to close
               </p>
-              
-              <h3 style={{
-                fontSize: '1.1rem',
-                fontWeight: '600',
-                marginBottom: '0.5rem',
-                color: '#1f2937'
-              }}>
-                Capturing Groups:
-              </h3>
-              <p style={{ marginBottom: '1rem' }}>
-                Groups are captured by filling in all their <strong>liberties</strong> (empty 
-                spaces adjacent to the group). When a group has no liberties remaining, 
-                it is captured and removed from the board.
-              </p>
-              
-              <h3 style={{
-                fontSize: '1.1rem',
-                fontWeight: '600',
-                marginBottom: '0.5rem',
-                color: '#1f2937'
-              }}>
-                Win Conditions:
-              </h3>
-              <ul style={{ 
-                marginBottom: '1rem',
-                paddingLeft: '1.5rem'
-              }}>
-                <li><strong>Level 1:</strong> Capture 1 stone to win</li>
-                <li><strong>Level 2:</strong> Capture 3 stones to win</li>
-                <li><strong>Level 3:</strong> Capture 3 stones to win</li>
-              </ul>
-              
-              <h3 style={{
-                fontSize: '1.1rem',
-                fontWeight: '600',
-                marginBottom: '0.5rem',
-                color: '#1f2937'
-              }}>
-                Progression:
-              </h3>
-              <p style={{ marginBottom: '1rem' }}>
-                Beat each level to unlock the next one. The AI becomes smarter 
-                and the board size increases as you progress.
-              </p>
-              
-              <div style={{
-                backgroundColor: '#f9fafb',
-                padding: '1rem',
-                borderRadius: '6px',
-                border: '1px solid #e5e7eb'
-              }}>
-                <p style={{
-                  fontSize: '0.85rem',
-                  color: '#6b7280',
-                  margin: 0,
-                  fontStyle: 'italic'
-                }}>
-                  💡 Tip: Look for opponent groups with few liberties - these are 
-                  easier to capture!
-                </p>
-              </div>
             </div>
           </div>
         </div>

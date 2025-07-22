@@ -3,7 +3,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Sphere, Text } from '@react-three/drei'
 import * as THREE from 'three'
 
-function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptureCount, territoryScore, setTerritoryScore, showTerritoryScore, setShowTerritoryScore, gameMode, aiMode, winCriteria, showNodeNumbers, showEdgeNumbers, challengeLevel, completedLevels, setCompletedLevels, gameStateRef }) {
+function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptureCount, territoryScore, setTerritoryScore, showTerritoryScore, setShowTerritoryScore, gameMode, aiMode, winCriteria, showNodeNumbers, showEdgeNumbers, challengeLevel, setChallengeLevel, completedLevels, setCompletedLevels, gameStateRef }) {
   const groupRef = useRef()
   const [nodeColors, setNodeColors] = useState({})
   const [hoveredNode, setHoveredNode] = useState(null)
@@ -21,6 +21,17 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
   const markLevelCompleted = (result) => {
     if (gameMode === 'challenge' && result === 'win' && setCompletedLevels) {
       setCompletedLevels(prev => new Set([...prev, challengeLevel]))
+      
+      // Auto-advance to next level if not the last level
+      if (challengeLevel < 4 && setChallengeLevel) {
+        setTimeout(() => {
+          setChallengeLevel(challengeLevel + 1)
+          // Trigger restart game after level change
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('restartGame'))
+          }, 100)
+        }, 2000) // Wait 2 seconds to show the win message before advancing
+      }
     }
   }
   
@@ -180,6 +191,8 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
         effectiveWinCriteria = 'capture1'
       } else if (challengeLevel === 2 || challengeLevel === 3) {
         effectiveWinCriteria = 'capture3'
+      } else if (challengeLevel === 4) {
+        effectiveWinCriteria = 'capture3' // Level 4 also uses capture 3 stones
       }
     }
     
@@ -278,7 +291,10 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
     score += (captures[color] || 0) * 1000 // High weight for captures
     score -= (opponentCaptures[opponentColor] || 0) * 1000 // Penalty for opponent captures
     
-    // Factor 2: Liberty analysis (groups with few liberties)
+    // Factor 2: Territory analysis - heavily penalize playing in own territory
+    const { territoryOwnership } = calculateTerritory(nodeColors)
+    
+    // Factor 3: Liberty analysis (groups with few liberties)
     const visited = new Set()
     let minLiberties = Infinity
     let minLibertiesCount = 0
@@ -311,7 +327,7 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
       }
     }
     
-    // Factor 3: Opponent group analysis (attacking opportunities)
+    // Factor 4: Opponent group analysis (attacking opportunities)
     const opponentVisited = new Set()
     for (let i = 0; i < points.length; i++) {
       if (opponentVisited.has(i)) continue
@@ -343,11 +359,25 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
     const myColor = 'red'
     const opponentColor = 'blue'
     
+    // Calculate current territory ownership to avoid playing in own territory
+    const { territoryOwnership } = calculateTerritory(nodeColors)
+    
     // Get all valid moves
     const emptyNodes = getEmptyNodes(nodeColors)
-    const validMoves = emptyNodes.filter(nodeIndex => 
+    let validMoves = emptyNodes.filter(nodeIndex => 
       !wouldCreateZeroLibertyGroup(nodeIndex, myColor, nodeColors)
     )
+    
+    // Strongly prefer not to play in own territory
+    const movesOutsideOwnTerritory = validMoves.filter(nodeIndex => 
+      territoryOwnership[nodeIndex] !== myColor
+    )
+    
+    // If we have moves outside our own territory, use those preferentially
+    if (movesOutsideOwnTerritory.length > 0) {
+      validMoves = movesOutsideOwnTerritory
+    }
+    // Otherwise, if forced to play in our own territory, still do the full evaluation
     
     if (validMoves.length === 0) return null
     
@@ -359,8 +389,12 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
       const testNodeColors = { ...nodeColors, [nodeIndex]: myColor }
       const { newNodeColors: afterCapture } = captureGroups(testNodeColors, myColor)
       
-      // Quick evaluation for initial filtering
-      const score = evaluatePosition(afterCapture, myColor)
+      // Apply heavy penalty for playing in own territory
+      let score = evaluatePosition(afterCapture, myColor)
+      if (territoryOwnership[nodeIndex] === myColor) {
+        score -= 500 // Heavy penalty for playing in own territory
+      }
+      
       candidateMoves.push({ nodeIndex, score })
     }
     
@@ -372,7 +406,13 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
     const lookaheadResults = []
     
     for (const candidate of top5Moves) {
-      const score = minimax(nodeColors, candidate.nodeIndex, 2, true, myColor, opponentColor)
+      let score = minimax(nodeColors, candidate.nodeIndex, 2, true, myColor, opponentColor)
+      
+      // Apply territory penalty again for the final move selection
+      if (territoryOwnership[candidate.nodeIndex] === myColor) {
+        score -= 500 // Heavy penalty for playing in own territory
+      }
+      
       lookaheadResults.push({ nodeIndex: candidate.nodeIndex, score })
     }
     
@@ -1545,7 +1585,7 @@ function TetrahedralLatticePoints({ size, selectedColor, captureCount, setCaptur
   )
 }
 
-function TetrahedralLattice({ size, selectedColor, captureCount, setCaptureCount, territoryScore, setTerritoryScore, showTerritoryScore, setShowTerritoryScore, gameMode, aiMode, winCriteria, showNodeNumbers, showEdgeNumbers, challengeLevel, completedLevels, setCompletedLevels }) {
+function TetrahedralLattice({ size, selectedColor, captureCount, setCaptureCount, territoryScore, setTerritoryScore, showTerritoryScore, setShowTerritoryScore, gameMode, aiMode, winCriteria, showNodeNumbers, showEdgeNumbers, challengeLevel, setChallengeLevel, completedLevels, setCompletedLevels }) {
   // Create a ref to access the game state from the inner component
   const gameStateRef = useRef({ gameEnded: false, gameResult: null })
   
@@ -1577,6 +1617,7 @@ function TetrahedralLattice({ size, selectedColor, captureCount, setCaptureCount
           showNodeNumbers={showNodeNumbers}
           showEdgeNumbers={showEdgeNumbers}
           challengeLevel={challengeLevel}
+          setChallengeLevel={setChallengeLevel}
           completedLevels={completedLevels}
           setCompletedLevels={setCompletedLevels}
           gameStateRef={gameStateRef}
