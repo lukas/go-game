@@ -16,11 +16,6 @@ import {
   FormControlLabel,
   Radio,
   Slider,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Switch,
-  FormGroup,
   Divider,
   Box,
   Container,
@@ -28,8 +23,7 @@ import {
 } from '@mui/material'
 import { 
   Info as InfoIcon, 
-  Close as CloseIcon,
-  ExpandMore as ExpandMoreIcon 
+  Close as CloseIcon
 } from '@mui/icons-material'
 import TetrahedralLattice from './components/TetrahedralLattice'
 import SizeSlider from './components/SizeSlider'
@@ -61,7 +55,6 @@ function App() {
   const [helpContent, setHelpContent] = useState('') // Store help content from markdown file
   const [showNodeNumbers, setShowNodeNumbers] = useState(false)
   const [showEdgeNumbers, setShowEdgeNumbers] = useState(false)
-  const [debugDrawerOpen, setDebugDrawerOpen] = useState(false)
 
   // Load help content from markdown file
   useEffect(() => {
@@ -113,7 +106,7 @@ function App() {
           alignItems: 'center',
           justifyContent: 'center',
           marginBottom: '2rem',
-          position: 'relative'
+          gap: '0.5rem'
         }}>
           <h1 style={{ 
             color: '#333', 
@@ -122,15 +115,18 @@ function App() {
           }}>
             3D Go
           </h1>
-          <Button
-            variant="contained"
-            color="secondary"
-            startIcon={<InfoIcon />}
+          <IconButton
             onClick={() => setShowHelp(true)}
-            sx={{ position: 'absolute', right: 0 }}
+            sx={{ 
+              color: 'grey.600',
+              '&:hover': {
+                backgroundColor: 'grey.100',
+                color: 'grey.800'
+              }
+            }}
           >
-            Info
-          </Button>
+            <InfoIcon />
+          </IconButton>
         </div>
         
         <div style={{
@@ -304,43 +300,6 @@ function App() {
               </CardContent>
             </Card>
             
-            <Accordion sx={{ mb: 2 }}>
-              <AccordionSummary
-                expandIcon={<ExpandMoreIcon />}
-                onClick={() => setDebugDrawerOpen(!debugDrawerOpen)}
-              >
-                <Typography>Debug Mode</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <FormGroup>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={showNodeNumbers}
-                        onChange={(e) => setShowNodeNumbers(e.target.checked)}
-                      />
-                    }
-                    label="Show Node Numbers"
-                  />
-                  <Typography variant="caption" color="text.secondary" sx={{ ml: 4, mb: 2 }}>
-                    {showNodeNumbers ? 'Node indices visible' : 'Shows node indices for debugging'}
-                  </Typography>
-                  
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={showEdgeNumbers}
-                        onChange={(e) => setShowEdgeNumbers(e.target.checked)}
-                      />
-                    }
-                    label="Show Edge Numbers"
-                  />
-                  <Typography variant="caption" color="text.secondary" sx={{ ml: 4 }}>
-                    {showEdgeNumbers ? 'Edge indices visible' : 'Shows edge indices for debugging'}
-                  </Typography>
-                </FormGroup>
-              </AccordionDetails>
-            </Accordion>
           </div>
           
           <div style={{
