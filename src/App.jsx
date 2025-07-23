@@ -76,9 +76,10 @@ function App() {
 
   // Simple markdown to HTML converter
   const markdownToHtml = (markdown) => {
-    return markdown
+    let html = markdown
       .replace(/^# (.*$)/gm, '<h1 style="font-size: 1.8rem; font-weight: bold; color: #f9fafb; margin: 0 0 1.5rem 0;">$1</h1>')
       .replace(/^## (.*$)/gm, '<h2 style="font-size: 1.3rem; font-weight: 600; margin: 1.5rem 0 0.8rem 0; color: #e5e7eb;">$1</h2>')
+      .replace(/^### (.*$)/gm, '<h3 style="font-size: 1.1rem; font-weight: 600; margin: 1.2rem 0 0.6rem 0; color: #d1d5db;">$1</h3>')
       .replace(/^\*\*(.+)\*\*$/gm, '<strong style="color: #f9fafb;">$1</strong>')
       .replace(/\*\*(.*?)\*\*/g, '<strong style="color: #f9fafb;">$1</strong>')
       .replace(/^- (.*$)/gm, '<li style="margin-bottom: 0.4rem; color: #d1d5db;">$1</li>')
@@ -96,6 +97,12 @@ function App() {
       .replace(/(<li[^>]*>.*?<\/li>\s*)+/g, (match) => {
         return `<ul style="margin-bottom: 1.5rem; padding-left: 1.5rem; list-style-type: disc;">${match}</ul>`
       })
+    
+    // Insert screenshot before the Rules section
+    const imageHtml = '<div style="text-align: center; margin: 1.5rem 0;"><img src="/3dgo-screenshot.png" alt="3D Go Game Interface" style="max-width: 60%; height: auto; border-radius: 6px; border: 1px solid #374151; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);" /></div>'
+    html = html.replace(/(<h2[^>]*>Rules<\/h2>)/, `${imageHtml}$1`)
+    
+    return html
   }
 
   return (
