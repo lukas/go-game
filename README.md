@@ -38,29 +38,21 @@ The tetrahedral lattice topology is particularly interesting because it preserve
 
 ### Prerequisites
 - Node.js (version 14 or higher)
-- npm or nvm for package management
 
 ### Installation & Setup
 
 1. **Clone the repository**
    ```bash
    git clone https://github.com/lukas/go-game.git
-   cd go-game/philadelphia
+   cd go-game
    ```
 
-2. **Install dependencies**
+2. **Start the game**
    ```bash
-   npm install
-   ```
-
-3. **Start the development server**
-   ```bash
-   npm start
-   # or
    ./start.sh
    ```
 
-   The automated start script will check dependencies and launch the development server at `http://localhost:5173`
+   The start script will automatically install dependencies and launch the development server at `http://localhost:5173`
 
 ### Alternative Commands
 
@@ -155,7 +147,6 @@ This project is open source. Feel free to explore, modify, and share!
 ## 🔗 Links
 
 - [GitHub Repository](https://github.com/lukas/go-game)
-- [Play Online](https://your-deployment-url.com) <!-- Update with actual deployment URL -->
 
 ---
 
